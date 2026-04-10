@@ -15,6 +15,7 @@ The feature enables users to have a **1:1 audio conversation with an AI version 
 - Achieve **low latency (<800ms to first response)**
 - Support **interruptions (barge-in)**
 - Maintain **natural conversational flow**
+- Show **live streaming transcript** for both user and assistant
 
 ### Secondary Goals
 - Reuse existing knowledge (resume, projects, RAG)
@@ -46,14 +47,16 @@ The feature enables users to have a **1:1 audio conversation with an AI version 
 ```mermaid
 graph TD
 
-A[Frontend - React] -->|Terminal Mode| B[FastAPI Backend]
+A[Frontend - React or Dev Test Page] -->|Terminal Mode| B[FastAPI Backend]
 A -->|Voice Mode| C[Node.js Voice Service]
 
 C --> D[OpenAI Realtime API - WSS]
 D --> D1[STT - built-in]
 D --> D2[GPT-4o Realtime - LLM]
 D --> D3[TTS - built-in]
-C --> E[Redis (Memory Store)]
+C --> E[Knowledge Provider]
+E --> E1[InMemoryProvider - current]
+E --> E2[RedisProvider - future]
 C -->|Optional| B
 
 B --> F[Neon Postgres (RAG)]
@@ -66,10 +69,12 @@ B --> F[Neon Postgres (RAG)]
 ### 6.1 Frontend
 - Microphone input (MediaStream API)
 - Audio playback
+- Live transcript panel for user + assistant
 - UI states:
   - Listening
   - Thinking
   - Speaking
+  - Streaming transcript
 
 ---
 
@@ -79,8 +84,9 @@ B --> F[Neon Postgres (RAG)]
 - Proxy real-time audio between browser and **OpenAI Realtime API** over a secure WebSocket
 - Manage the OpenAI Realtime session (session creation, config, system prompt injection)
 - Handle server-side VAD events and interruption signals from OpenAI
-- Inject persona context and Redis knowledge into the session before conversation starts
+- Inject persona context and knowledge-provider data into the session before conversation starts
 - Forward `response.audio.delta` chunks back to the browser for streaming playback
+- Enforce session guardrails such as inactivity timeout and max session duration
 
 #### Technology
 - **OpenAI Realtime API** (`wss://api.openai.com/v1/realtime`) — unified STT + LLM + TTS
@@ -103,36 +109,51 @@ B --> F[Neon Postgres (RAG)]
 
 ---
 
-### 6.4 Redis (Shared Memory Layer)
+### 6.4 Knowledge Provider Layer
 
 #### Purpose
-- Store precomputed knowledge
+- Store precomputed persona/project knowledge
 - Enable instant access for voice responses
+- Preserve a clean swap point between in-memory storage now and Redis later
+
+#### Current Implementation
+- `InMemoryProvider` seeded from `data.json`
+- `KnowledgeProvider` interface with Redis-compatible contract
+
+#### Future Implementation
+- `RedisProvider` using the same interface
 
 ---
 
 ## 7. Data Architecture
 
-### 7.1 Redis Schema
+### 7.1 Knowledge Keys
 
-#### Full Project Data
-```
-project:{id} -> full project JSON
-```
+Current provider keys:
 
-#### Project Index
+#### Top Projects
 ```
-projects:index -> [{ name, tags }]
+projects:top -> summarized project list for prompt injection
 ```
 
-#### Top Projects (for prompt)
-```
-projects:top -> [{ name, summary }]
-```
-
-#### Experience Summary
+#### Profile Summary
 ```
 profile:summary -> short bio
+```
+
+#### Skills
+```
+profile:skills -> technology and domain summary
+```
+
+#### Experience
+```
+profile:experience -> work history summary
+```
+
+#### Contact
+```
+profile:contact -> email / portfolio / GitHub / LinkedIn
 ```
 
 ---
@@ -149,7 +170,7 @@ Used for: immediate responses
 ---
 
 ### Layer 2: Fast Retrieval
-- Redis lookup
+- In-memory lookup now, Redis lookup later
 - Lightweight RAG (Neon)
 
 Used for: follow-ups or specific queries
@@ -172,19 +193,23 @@ participant User
 participant Browser
 participant VoiceService as Node.js Voice Service
 participant OAI as OpenAI Realtime API
-participant Redis
+participant Knowledge as Knowledge Provider
 
 User->>Browser: Speak (mic audio PCM16)
+Note over Browser: Local mic energy detection can trigger immediate interruption
 Browser->>VoiceService: Audio chunks over WS
+VoiceService->>Knowledge: Build system prompt before session start
 VoiceService->>OAI: Forward audio (input_audio_buffer.append)
 OAI-->>OAI: VAD detects end of speech
 OAI-->>OAI: STT transcription (internal)
 OAI-->>OAI: GPT-4o Realtime generates response
+OAI-->>VoiceService: response.audio_transcript.delta
 OAI-->>VoiceService: response.audio.delta (TTS audio chunks)
 VoiceService-->>Browser: Stream audio chunks
+VoiceService-->>Browser: Stream transcript deltas/events
 Browser-->>User: Play audio in real time
 
-Note over VoiceService,Redis: Optional: Redis lookup to enrich system prompt before session start
+Note over VoiceService,Knowledge: Provider-backed prompt injection before session start
 ```
 
 ### OpenAI Realtime API Session Config
@@ -194,12 +219,13 @@ Note over VoiceService,Redis: Optional: Redis lookup to enrich system prompt bef
   "model": "gpt-4o-realtime-preview",
   "modalities": ["text", "audio"],
   "voice": "alloy",
+  "input_audio_transcription": { "model": "whisper-1" },
   "turn_detection": {
     "type": "server_vad",
     "threshold": 0.5,
     "silence_duration_ms": 600
   },
-  "instructions": "<persona + preloaded Redis context injected here>"
+  "instructions": "<persona + knowledge-provider context + guardrails injected here>"
 }
 ```
 
@@ -241,11 +267,11 @@ With OpenAI Realtime API, STT, LLM, and TTS are handled in a **single streaming 
 - Cancel current response
 - Start new processing cycle
 
-### Mechanism (OpenAI Realtime API — built-in)
-- **Server-side VAD** detects barge-in automatically
-- OpenAI sends `input_audio_buffer.speech_started` event during AI playback
-- Client must send `response.cancel` and truncate the audio buffer
-- OpenAI Realtime API handles the state reset — no custom VAD library needed
+### Mechanism (Implemented)
+- **Local mic-energy interrupt detection** cuts playback quickly on the browser side
+- **Server-side VAD** from OpenAI still provides authoritative speech events
+- Browser sends `response.cancel` upstream and truncates queued local audio
+- Browser must keep tracking queued audio until playback actually drains; `response.done` is not enough on its own
 
 ---
 
@@ -267,7 +293,7 @@ With OpenAI Realtime API, STT, LLM, and TTS are handled in a **single streaming 
 
 ### Voice Backend
 - Node.js
-- WebSocket/WebRTC
+- WebSocket relay
 
 ### AI
 - **OpenAI Realtime API** (`gpt-4o-realtime-preview`) — unified STT + LLM + TTS
@@ -276,7 +302,7 @@ With OpenAI Realtime API, STT, LLM, and TTS are handled in a **single streaming 
 - No separate Whisper, ElevenLabs, or TTS service required
 
 ### Data
-- Redis
+- In-memory knowledge store now, Redis-ready provider abstraction
 - Neon Postgres (existing)
 
 ---
@@ -284,20 +310,20 @@ With OpenAI Realtime API, STT, LLM, and TTS are handled in a **single streaming 
 ## 15. Implementation Phases
 
 ### Phase 1: Basic Audio Chat
-- Push-to-talk
-- STT → LLM → TTS
+- Relay scaffold, browser audio capture/playback, realtime session setup
 
 ### Phase 2: Continuous Conversation
-- Auto speech detection
-- Loop conversation
+- Continuous conversation, server VAD, error forwarding, session management
 
 ### Phase 3: Interruptions
-- Cancel + restart logic
+- Barge-in handling, playback cancellation, local interrupt detection, inactivity guards
 
 ### Phase 4: Memory Integration
-- Redis integration
+- Knowledge provider abstraction, in-memory persona data, system-prompt injection, guardrails, live transcript
 
 ### Phase 5: Optional Enhancements
+- React integration
+- Redis provider swap
 - Avatar/video
 - Smarter RAG triggers
 
@@ -311,11 +337,12 @@ With OpenAI Realtime API, STT, LLM, and TTS are handled in a **single streaming 
 - **Browser audio format** — must send PCM16 at 24kHz; encoding must be correct
 - **WebSocket relay complexity** — Node.js acts as a relay; any crash breaks the session
 - **Context window limits** — system prompt + Redis data must fit within model context
+- **Transcript/audio drift** — transcript generation may finish before queued audio playback drains
 
 ### Trade-offs
 - Speed + simplicity vs vendor lock-in (chose OpenAI Realtime API for both)
-- Preloaded Redis knowledge vs live RAG (preload wins for latency)
-- Server VAD vs client VAD (server VAD chosen — less code, works reliably)
+- Preloaded provider-backed knowledge vs live RAG (preload wins for latency)
+- Server VAD plus local interrupt detection vs server-only VAD (hybrid chosen for faster barge-in)
 
 ---
 
@@ -334,7 +361,7 @@ The system introduces a dedicated **voice-first architecture** that prioritizes 
 
 Core idea:
 
-> Precompute knowledge → inject into OpenAI Realtime session → stream audio back instantly
+> Precompute knowledge → inject into OpenAI Realtime session → stream transcript and audio back instantly
 
 ### Key Technical Decision
 

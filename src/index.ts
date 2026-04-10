@@ -1,5 +1,6 @@
 import express from 'express';
 import http from 'http';
+import path from 'path';
 import { WebSocketServer } from 'ws';
 import { config } from './config';
 import { logger } from './lib/logger';
@@ -11,6 +12,13 @@ import { handleClientConnection } from './relay/relayHandler';
 const app = express();
 app.use(express.json());
 app.use(healthRouter);
+
+// Dev-only: serve the audio test page at /test
+if (config.nodeEnv === 'development') {
+    const testPagePath = path.resolve(process.cwd(), 'public', 'test.html');
+    app.get('/test', (_req, res) => res.sendFile(testPagePath));
+    logger.info('Dev test page available', { url: `http://localhost:${config.port}/test` });
+}
 
 const server = http.createServer(app);
 

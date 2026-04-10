@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Voice Relay — Dev Test</title>
+  <style>
+    body { font-family: monospace; background: #0f0f0f; color: #e0e0e0; padding: 2rem; max-width: 700px; margin: 0 auto; }
+    h1 { color: #7cfc00; font-size: 1.1rem; margin-bottom: 1.5rem; }
+    .row { display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; }
+    button { background: #222; border: 1px solid #555; color: #e0e0e0; padding: 0.5rem 1.2rem; cursor: pointer; font-family: monospace; }
+    button:hover:not(:disabled) { background: #333; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.active { border-color: #7cfc00; color: #7cfc00; }
+    #status { font-size: 0.85rem; color: #aaa; }
+    #status.connected { color: #7cfc00; }
+    #status.error { color: #ff4444; }
+    #log { background: #1a1a1a; border: 1px solid #333; padding: 1rem; height: 320px; overflow-y: auto; font-size: 0.78rem; line-height: 1.6; }
+    .event-type { color: #7cfc00; }
+    .event-error { color: #ff4444; }
+    .event-meta { color: #888; }
+    .event-info { color: #58a6ff; }
+  </style>
+</head>
+<body>
+  <h1>[ Voice Relay — Dev Test Page ]</h1>
+
+  <div class="row">
+    <button id="btnConnect">Connect</button>
+    <button id="btnDisconnect" disabled>Disconnect</button>
+    <span id="status">Disconnected</span>
+  </div>
+
+  <div class="row">
+    <button id="btnMic" disabled>🎤 Start Speaking</button>
+    <span id="micStatus" style="font-size:0.85rem;color:#aaa;"></span>
+  </div>
+
+  <div id="log"></div>
+
+  <script>
+    // ─── Constants ──────────────────────────────────────────────────────────────
+    const WS_URL = 'ws://localhost:3001/ws';
+    const TARGET_SAMPLE_RATE = 24000;  // OpenAI Realtime API requires 24kHz PCM16
+    const BUFFER_SIZE = 4096;          // ScriptProcessorNode buffer size
+
+    // ─── State ───────────────────────────────────────────────────────────────────
+    let ws = null;
+    let audioCtx = null;
+    let micStream = null;
+    let processor = null;
+    let micSource = null;
+    let nextPlayTime = 0;        // schedules audio chunks gaplessly
+    let isMicActive = false;
+
+    // ─── DOM refs ────────────────────────────────────────────────────────────────
+    const btnConnect    = document.getElementById('btnConnect');
+    const btnDisconnect = document.getElementById('btnDisconnect');
+    const btnMic        = document.getElementById('btnMic');
+    const statusEl      = document.getElementById('status');
+    const micStatusEl   = document.getElementById('micStatus');
+    const logEl         = document.getElementById('log');
+
+    // ─── Logging ─────────────────────────────────────────────────────────────────
+    function appendLog(text, cls = '') {
+      const line = document.createElement('div');
+      line.className = cls;
+      line.textContent = `[${new Date().toISOString().slice(11,23)}] ${text}`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function logEvent(type, detail = '') {
+      appendLog(`${type}${detail ? ' — ' + detail : ''}`, type.startsWith('error') || type.includes('error') ? 'event-error' : 'event-type');
+    }
+
+    // ─── Audio helpers ────────────────────────────────────────────────────────────
+
+    /** Float32 samples → Int16Array (PCM16) */
+    function floatToInt16(float32) {
+      const int16 = new Int16Array(float32.length);
+      for (let i = 0; i < float32.length; i++) {
+        const clamped = Math.max(-1, Math.min(1, float32[i]));
+        int16[i] = clamped < 0 ? clamped * 32768 : clamped * 32767;
+      }
+      return int16;
+    }
+
+    /** ArrayBuffer → base64 string */
+    function bufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    }
+
+    /** base64 string → Int16Array */
+    function base64ToInt16(b64) {
+      const binary = atob(b64);
+      const int16 = new Int16Array(binary.length / 2);
+      for (let i = 0; i < int16.length; i++) {
+        int16[i] = binary.charCodeAt(i * 2) | (binary.charCodeAt(i * 2 + 1) << 8);
+      }
+      return int16;
+    }
+
+    /** Schedule a PCM16 base64 chunk for gapless playback */
+    function playAudioChunk(base64Audio) {
+      if (!audioCtx) return;
+      const int16 = base64ToInt16(base64Audio);
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
+
+      const buffer = audioCtx.createBuffer(1, float32.length, TARGET_SAMPLE_RATE);
+      buffer.copyToChannel(float32, 0);
+
+      const src = audioCtx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(audioCtx.destination);
+
+      // Schedule at nextPlayTime to avoid gaps between chunks
+      const startAt = Math.max(audioCtx.currentTime + 0.02, nextPlayTime);
+      src.start(startAt);
+      nextPlayTime = startAt + buffer.duration;
+    }
+
+    /**
+     * Resample Float32 audio from nativeSampleRate → TARGET_SAMPLE_RATE (24kHz).
+     * Uses synchronous linear interpolation — safe to call inside onaudioprocess.
+     */
+    function resampleTo24k(float32, nativeSampleRate) {
+      if (nativeSampleRate === TARGET_SAMPLE_RATE) return float32;
+      const ratio = nativeSampleRate / TARGET_SAMPLE_RATE;
+      const outputLength = Math.floor(float32.length / ratio);
+      const output = new Float32Array(outputLength);
+      for (let i = 0; i < outputLength; i++) {
+        const pos = i * ratio;
+        const idx = Math.floor(pos);
+        const frac = pos - idx;
+        const a = float32[idx] ?? 0;
+        const b = float32[idx + 1] ?? a;
+        output[i] = a + frac * (b - a);
+      }
+      return output;
+    }
+
+    // ─── WebSocket ───────────────────────────────────────────────────────────────
+    function connect() {
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        setStatus('Connected', 'connected');
+        btnConnect.disabled = true;
+        btnDisconnect.disabled = false;
+        btnMic.disabled = false;
+        appendLog('WebSocket connected to relay', 'event-info');
+      };
+
+      ws.onmessage = (evt) => {
+        let msg;
+        try { msg = JSON.parse(evt.data); } catch { return; }
+
+        switch (msg.type) {
+          case 'session.created':
+            logEvent('session.created', `id=${msg.session?.id}`);
+            break;
+          case 'session.updated':
+            logEvent('session.updated', 'config accepted by OpenAI');
+            break;
+          case 'session.closed':
+            logEvent('session.closed', `reason=${msg.reason}`);
+            disconnect();
+            break;
+          case 'relay.error':
+            logEvent('error (relay)', msg.message);
+            break;
+          case 'error':
+            logEvent('error (openai)', `${msg.error?.code} — ${msg.error?.message}`);
+            break;
+          case 'response.audio.delta':
+            // Stream AI audio back to speaker
+            if (msg.delta) playAudioChunk(msg.delta);
+            break;
+          case 'response.audio_transcript.delta':
+            // Optional: log transcript as it comes in
+            process.stdout?.write?.(msg.delta);
+            break;
+          case 'response.done':
+            logEvent('response.done', 'AI finished speaking');
+            nextPlayTime = 0; // reset scheduler for next turn
+            break;
+          case 'input_audio_buffer.speech_started':
+            logEvent('speech_started', 'VAD detected you speaking');
+            break;
+          case 'input_audio_buffer.speech_stopped':
+            logEvent('speech_stopped', 'VAD detected end of speech');
+            break;
+          default:
+            appendLog(`${msg.type}`, 'event-meta');
+        }
+      };
+
+      ws.onclose = (evt) => {
+        appendLog(`Disconnected — code=${evt.code} reason=${evt.reason || 'none'}`, 'event-meta');
+        setStatus('Disconnected', '');
+        resetUI();
+      };
+
+      ws.onerror = () => {
+        appendLog('WebSocket error — is the server running?', 'event-error');
+        setStatus('Error', 'error');
+      };
+    }
+
+    function disconnect() {
+      stopMic();
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close(1000, 'user_disconnect');
+      ws = null;
+      resetUI();
+    }
+
+    // ─── Microphone ───────────────────────────────────────────────────────────────
+    async function startMic() {
+      try {
+        // Use default AudioContext at the device's native rate — resampling happens per chunk.
+        if (!audioCtx) audioCtx = new AudioContext();
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
+        nextPlayTime = 0;
+
+        const nativeSampleRate = audioCtx.sampleRate;
+        appendLog(`AudioContext native sample rate: ${nativeSampleRate}Hz`, 'event-meta');
+
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        micSource = audioCtx.createMediaStreamSource(micStream);
+
+        processor = audioCtx.createScriptProcessor(BUFFER_SIZE, 1, 1);
+        processor.onaudioprocess = (e) => {
+          if (!ws || ws.readyState !== WebSocket.OPEN) return;
+          const float32 = e.inputBuffer.getChannelData(0);
+          const resampled = resampleTo24k(float32, nativeSampleRate);
+          const int16 = floatToInt16(resampled);
+          const base64 = bufferToBase64(int16.buffer);
+          ws.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: base64 }));
+        };
+
+        micSource.connect(processor);
+        processor.connect(audioCtx.destination); // must be connected to run
+
+        isMicActive = true;
+        btnMic.textContent = '🔴 Stop Speaking';
+        btnMic.classList.add('active');
+        micStatusEl.textContent = `Capturing mic at ${nativeSampleRate}Hz → resampling to 24kHz PCM16`;
+        appendLog('Mic started — streaming audio to relay', 'event-info');
+      } catch (err) {
+        appendLog(`Mic error: ${err.message}`, 'event-error');
+      }
+    }
+
+    function stopMic() {
+      if (processor) { processor.disconnect(); processor = null; }
+      if (micSource) { micSource.disconnect(); micSource = null; }
+      if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+      isMicActive = false;
+      btnMic.textContent = '🎤 Start Speaking';
+      btnMic.classList.remove('active');
+      micStatusEl.textContent = '';
+    }
+
+    // ─── UI helpers ───────────────────────────────────────────────────────────────
+    function setStatus(text, cls) {
+      statusEl.textContent = text;
+      statusEl.className = cls;
+    }
+
+    function resetUI() {
+      btnConnect.disabled = false;
+      btnDisconnect.disabled = true;
+      btnMic.disabled = true;
+      stopMic();
+    }
+
+    // ─── Events ───────────────────────────────────────────────────────────────────
+    btnConnect.addEventListener('click', connect);
+    btnDisconnect.addEventListener('click', disconnect);
+    btnMic.addEventListener('click', () => { isMicActive ? stopMic() : startMic(); });
+  </script>
+</body>
+</html>

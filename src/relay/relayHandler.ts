@@ -70,9 +70,12 @@ export function handleClientConnection(clientWs: WebSocket, req: IncomingMessage
     );
 
     // Forward browser messages → OpenAI, and reset the inactivity timer each time.
-    clientWs.on('message', (data) => {
+    // ws@8 always delivers messages as Buffer; send(Buffer) emits binary frames.
+    // Preserve the original frame type: text frames must be sent as strings so
+    // OpenAI receives them as text WebSocket frames (it requires text for JSON events).
+    clientWs.on('message', (data, isBinary) => {
         openAiSession.resetInactivity();
-        openAiSession.send(data);
+        openAiSession.send(isBinary ? data : data.toString());
     });
 
     clientWs.on('close', (code, reason) => {

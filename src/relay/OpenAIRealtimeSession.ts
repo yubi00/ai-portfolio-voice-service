@@ -12,7 +12,7 @@ export class OpenAIRealtimeSession {
     private closed = false;
     private closeReason = 'upstream_closed';
 
-    constructor(sessionId: string, onMessage: (data: WebSocket.RawData) => void, onClose: (reason: string) => void, onError: (message: string) => void) {
+    constructor(sessionId: string, onMessage: (data: WebSocket.RawData | string) => void, onClose: (reason: string) => void, onError: (message: string) => void) {
         this.sessionId = sessionId;
 
         // Hard cap: close session after maxSessionDurationMs no matter what.
@@ -36,11 +36,12 @@ export class OpenAIRealtimeSession {
             this.configureSession();
         });
 
-        this.upstream.on('message', (data) => {
+        this.upstream.on('message', (data, isBinary) => {
             this.logIncomingEvent(data);
             // OpenAI sends error events as JSON messages, not WS-level errors.
             // Forward them to the browser and log, but keep the session open.
-            onMessage(data);
+            // Convert text frames to strings so the relay sends text WS frames to the browser.
+            onMessage(isBinary ? data : data.toString());
         });
 
         this.upstream.on('error', (err) => {
@@ -66,6 +67,7 @@ export class OpenAIRealtimeSession {
     }
 
     send(data: WebSocket.RawData | string): void {
+        if (this.closed) return; // session already shutting down — silently drop
         if (this.upstream.readyState === WebSocket.OPEN) {
             this.upstream.send(data);
         } else {
@@ -126,11 +128,19 @@ export class OpenAIRealtimeSession {
 
     private logIncomingEvent(data: WebSocket.RawData): void {
         try {
-            const parsed = JSON.parse(data.toString()) as { type?: string };
-            logger.debug('OpenAI event received', {
-                sessionId: this.sessionId,
-                eventType: parsed.type ?? 'unknown',
-            });
+            const parsed = JSON.parse(data.toString()) as { type?: string; error?: { code?: string; message?: string } };
+            if (parsed.type === 'error') {
+                logger.error('OpenAI API error event', {
+                    sessionId: this.sessionId,
+                    code: parsed.error?.code,
+                    message: parsed.error?.message,
+                });
+            } else {
+                logger.debug('OpenAI event received', {
+                    sessionId: this.sessionId,
+                    eventType: parsed.type ?? 'unknown',
+                });
+            }
         } catch {
             // binary or non-JSON frame — ignore for logging purposes
         }

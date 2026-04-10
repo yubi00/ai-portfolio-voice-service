@@ -321,8 +321,18 @@ With OpenAI Realtime API, STT, LLM, and TTS are handled in a **single streaming 
 ### Phase 4: Memory Integration
 - Knowledge provider abstraction, in-memory persona data, system-prompt injection, guardrails, live transcript
 
-### Phase 5: Optional Enhancements
-- React integration
+### Phase 5: Voice Backend Abstraction
+- Introduce a `VoiceSessionService`-style abstraction
+- Keep the current Realtime path as one implementation, wrapped by an adapter rather than rewritten
+- Add a lower-cost turn-based STT + LLM + TTS implementation
+- Select implementation via config without changing frontend-facing contracts
+- Preserve the current Realtime behavior for demos/dev while adding the cheaper production path in parallel
+
+### Phase 6: React Integration
+- Integrate voice chat into the real portfolio frontend
+- Reuse the same event/transcript contract regardless of backend mode
+
+### Phase 7: Optional Enhancements
 - Redis provider swap
 - Avatar/video
 - Smarter RAG triggers

@@ -76,22 +76,20 @@ These apply to every line written, every phase, no exceptions:
 
 ---
 
-## Phase 4 — Persona & Knowledge Injection (Redis)
+## Phase 4 — Persona & Knowledge Injection
 
-> Goal: AI responds as "Yubi" using preloaded portfolio knowledge from Redis.
+> Goal: AI responds as "Yubi" using preloaded portfolio knowledge from a provider-backed store.
 
-- [ ] Set up Redis (local Docker or Upstash for dev)
-- [ ] Write a seed/populate script that loads:
-  - `profile:summary` — short bio paragraph
-  - `projects:top` — top 5–8 projects as JSON list
-  - `profile:skills` — skills list
-- [ ] On Node relay startup (or session init), fetch Redis knowledge keys
-- [ ] Compose full system prompt: persona instructions + Redis knowledge snippets
-- [ ] Inject into `session.update` → `instructions` field before conversation starts
-- [ ] Test: ask "What projects have you worked on?" — confirm AI answers with real data
-- [ ] Test: ask "Tell me about yourself" — confirm persona sounds like Yubi
+- [x] Create provider abstraction for persona knowledge (`KnowledgeProvider`)
+- [x] Implement `InMemoryProvider` seeded from `data.json`
+- [x] Load `profile:summary`, `projects:top`, `profile:skills`, `profile:experience`, and `profile:contact`
+- [x] Compose full system prompt: persona instructions + knowledge snippets + guardrails
+- [x] Inject into `session.update` → `instructions` field before conversation starts
+- [x] Enable input transcription with `whisper-1` for transcript display
+- [x] Test: ask "What projects have you worked on?" — confirm AI answers with real data
+- [x] Test: ask "Tell me about yourself" — confirm persona sounds like Yubi
 
-**Phase 4 done when:** AI introduces itself correctly and answers portfolio questions from preloaded knowledge.
+**Phase 4 done when:** AI introduces itself correctly, answers portfolio questions from preloaded knowledge, and stays within role guardrails.
 
 ---
 
@@ -99,19 +97,40 @@ These apply to every line written, every phase, no exceptions:
 
 > Goal: User can interrupt the AI mid-response and it handles it gracefully.
 
-- [ ] Listen for `input_audio_buffer.speech_started` event from OpenAI during AI playback
-- [ ] On barge-in event: send `response.cancel` to OpenAI
-- [ ] On barge-in event: stop browser audio playback immediately
-- [ ] Send `conversation.item.truncate` if needed to sync state
-- [ ] Resume listening for next user speech after cancel
-- [ ] Test: start speaking while AI is talking — confirm AI stops and listens
-- [ ] Test: complete sentence after barge-in — confirm AI responds to the new input
+- [x] Listen for `input_audio_buffer.speech_started` event from OpenAI during AI playback
+- [x] Add local mic-energy interrupt detection for faster barge-in than server VAD alone
+- [x] On barge-in event: send `response.cancel` to OpenAI
+- [x] On barge-in event: stop browser audio playback immediately
+- [x] Keep queued playback tracked until audio actually drains
+- [x] Stream transcript live for both user and assistant during interruption scenarios
+- [x] Resume listening for next user speech after cancel
+- [x] Test: start speaking while AI is talking — confirm AI stops and listens
+- [x] Test: interrupt after transcript finishes but while queued audio is still playing
+- [x] Test: complete sentence after barge-in — confirm AI responds to the new input
 
 **Phase 5 done when:** Barge-in feels natural with no audio glitches or stuck states.
 
 ---
 
-## Phase 6 — React Integration (Frontend)
+## Phase 6 — Voice Backend Abstraction & Low-Cost Mode
+
+> Goal: Keep the Realtime path, but make the voice layer swappable so production can use a cheaper turn-based STT + LLM + TTS pipeline.
+
+- [ ] Define a `VoiceSessionService` / `AudioConversationService` interface for the voice orchestration layer
+- [ ] Add a thin adapter/wrapper around the existing Realtime implementation — no behavioral changes to the current Realtime code path
+- [ ] Add config-based mode selection (for example: `VOICE_MODE=realtime|turn-based`)
+- [ ] Design the turn-based flow: browser utterance -> STT -> LLM -> TTS -> playback
+- [ ] Reuse existing persona/knowledge prompt building in both modes
+- [ ] Define transcript/event contract that both implementations can emit to the frontend
+- [ ] Keep the current Realtime implementation as the stable reference path for demos/dev
+- [ ] Do not modify the existing Realtime behavior while introducing the abstraction layer
+- [ ] Document trade-offs: Realtime = barge-in/full duplex, Turn-based = cheaper but no mid-sentence interrupt
+
+**Phase 6 done when:** The codebase can support both Realtime and low-cost turn-based voice backends without changing frontend-facing behavior, and the current Realtime path remains behaviorally unchanged.
+
+---
+
+## Phase 7 — React Integration (Frontend)
 
 > Goal: Voice feature is integrated into the portfolio React app.
 
@@ -124,11 +143,11 @@ These apply to every line written, every phase, no exceptions:
 - [ ] Test on desktop Chrome and Firefox
 - [ ] Test on mobile Safari (check AudioContext unlock requirement on iOS)
 
-**Phase 6 done when:** Voice chat button works inside the real portfolio frontend.
+**Phase 7 done when:** Voice chat button works inside the real portfolio frontend.
 
 ---
 
-## Phase 7 — Hardening & Production Readiness
+## Phase 8 — Hardening & Production Readiness
 
 > Goal: Safe to deploy and show to visitors.
 
@@ -141,13 +160,13 @@ These apply to every line written, every phase, no exceptions:
 - [ ] Deploy to staging and run end-to-end smoke test
 - [ ] Deploy to production
 
-**Phase 7 done when:** Service is live, monitored, and safe for real visitors.
+**Phase 8 done when:** Service is live, monitored, and safe for real visitors.
 
 ---
 
-## Phase 8 — Nice to Haves (Post-MVP)
+## Phase 9 — Nice to Haves (Post-MVP)
 
-> Do these only after Phase 7 is stable.
+> Do these only after Phase 8 is stable.
 
 - [ ] Swap `alloy` voice for a more personalized voice (test `echo`, `shimmer`, `nova`)
 - [ ] Add on-screen transcript of conversation
@@ -162,4 +181,4 @@ These apply to every line written, every phase, no exceptions:
 
 > Update this line as you progress.
 
-**Currently working on: Phase 3**
+**Currently working on: Phase 6**

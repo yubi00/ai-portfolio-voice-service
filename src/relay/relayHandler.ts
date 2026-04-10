@@ -47,7 +47,7 @@ export function handleClientConnection(clientWs: WebSocket, req: IncomingMessage
 
     const openAiSession = new OpenAIRealtimeSession(
         sessionId,
-        // Forward OpenAI messages → browser
+        // Forward OpenAI messages → browser (includes OpenAI-level error events)
         (data) => {
             if (clientWs.readyState === WebSocket.OPEN) {
                 clientWs.send(data);
@@ -59,6 +59,12 @@ export function handleClientConnection(clientWs: WebSocket, req: IncomingMessage
             if (clientWs.readyState === WebSocket.OPEN) {
                 clientWs.send(JSON.stringify({ type: 'session.closed', reason }));
                 clientWs.close(1000, reason);
+            }
+        },
+        // WS-level transport error (not OpenAI API errors — those come via message events)
+        (message) => {
+            if (clientWs.readyState === WebSocket.OPEN) {
+                clientWs.send(JSON.stringify({ type: 'relay.error', message }));
             }
         }
     );

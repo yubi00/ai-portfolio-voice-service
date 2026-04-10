@@ -43,16 +43,16 @@ These apply to every line written, every phase, no exceptions:
 
 > Goal: Session is initialized with the right model, voice, VAD, and a placeholder system prompt.
 
-- [ ] Send `session.update` event after upstream WS connects with:
+- [x] Send `session.update` event after upstream WS connects with:
   - `model: "gpt-4o-realtime-preview"`
   - `modalities: ["text", "audio"]`
   - `voice: "alloy"`
   - `turn_detection: { type: "server_vad", silence_duration_ms: 600 }`
   - `instructions`: placeholder persona string ("You are Yubi, a software engineer...")
-- [ ] Handle `session.created` and `session.updated` events; log confirmation
-- [ ] Handle `error` events from OpenAI and forward to browser with a clear error shape
-- [ ] Set audio format: `input_audio_format: "pcm16"`, `output_audio_format: "pcm16"`
-- [ ] Test: verify session config is accepted by OpenAI (check `session.updated` event)
+- [x] Handle `session.created` and `session.updated` events; log confirmation
+- [x] Handle `error` events from OpenAI and forward to browser with a clear error shape
+- [x] Set audio format: `input_audio_format: "pcm16"`, `output_audio_format: "pcm16"`
+- [x] Test: verify session config is accepted by OpenAI (check `session.updated` event)
 
 **Phase 2 done when:** Session is correctly configured and confirmed by OpenAI.
 
@@ -162,4 +162,4 @@ These apply to every line written, every phase, no exceptions:
 
 > Update this line as you progress.
 
-**Currently working on: Phase 2**
+**Currently working on: Phase 3**

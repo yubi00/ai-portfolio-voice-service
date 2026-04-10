@@ -12,7 +12,7 @@ export class OpenAIRealtimeSession {
     private closed = false;
     private closeReason = 'upstream_closed';
 
-    constructor(sessionId: string, onMessage: (data: WebSocket.RawData) => void, onClose: (reason: string) => void) {
+    constructor(sessionId: string, onMessage: (data: WebSocket.RawData) => void, onClose: (reason: string) => void, onError: (message: string) => void) {
         this.sessionId = sessionId;
 
         // Hard cap: close session after maxSessionDurationMs no matter what.
@@ -38,11 +38,14 @@ export class OpenAIRealtimeSession {
 
         this.upstream.on('message', (data) => {
             this.logIncomingEvent(data);
+            // OpenAI sends error events as JSON messages, not WS-level errors.
+            // Forward them to the browser and log, but keep the session open.
             onMessage(data);
         });
 
         this.upstream.on('error', (err) => {
             logger.error('Upstream OpenAI WS error', { sessionId, error: err.message });
+            onError(err.message);
         });
 
         this.upstream.on('close', (code, reason) => {

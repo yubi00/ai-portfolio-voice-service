@@ -3,6 +3,7 @@ import { IncomingMessage } from 'http';
 import { OpenAIRealtimeSession } from './OpenAIRealtimeSession';
 import { logger } from '../lib/logger';
 import { config } from '../config';
+import { knowledgeProvider, buildSystemPrompt } from '../knowledge';
 
 // Single responsibility: manage the relay between one browser client and one OpenAI session.
 
@@ -21,7 +22,7 @@ function isOriginAllowed(origin: string | undefined): boolean {
     return allowed.includes(origin);
 }
 
-export function handleClientConnection(clientWs: WebSocket, req: IncomingMessage): void {
+export async function handleClientConnection(clientWs: WebSocket, req: IncomingMessage): Promise<void> {
     const origin = req.headers.origin;
 
     // Origin check — reject connections from unknown origins in production.
@@ -45,8 +46,12 @@ export function handleClientConnection(clientWs: WebSocket, req: IncomingMessage
     const sessionId = generateSessionId();
     logger.info('Browser client connected', { sessionId, activeSessions });
 
+    // Build persona + knowledge system prompt before opening the upstream connection.
+    const systemPrompt = await buildSystemPrompt(knowledgeProvider);
+
     const openAiSession = new OpenAIRealtimeSession(
         sessionId,
+        systemPrompt,
         // Forward OpenAI messages → browser (includes OpenAI-level error events)
         (data) => {
             if (clientWs.readyState === WebSocket.OPEN) {
@@ -73,9 +78,21 @@ export function handleClientConnection(clientWs: WebSocket, req: IncomingMessage
     // ws@8 always delivers messages as Buffer; send(Buffer) emits binary frames.
     // Preserve the original frame type: text frames must be sent as strings so
     // OpenAI receives them as text WebSocket frames (it requires text for JSON events).
+    //
+    // NOTE: Do NOT reset the inactivity timer on audio buffer appends — the mic
+    // streams chunks continuously (even during silence), which would prevent the
+    // timer from ever firing. Only reset on conversational events.
     clientWs.on('message', (data, isBinary) => {
-        openAiSession.resetInactivity();
-        openAiSession.send(isBinary ? data : data.toString());
+        const raw = isBinary ? data : data.toString();
+        if (!isBinary) {
+            try {
+                const parsed = JSON.parse(raw as string);
+                if (parsed.type !== 'input_audio_buffer.append') {
+                    openAiSession.resetInactivity();
+                }
+            } catch { /* malformed JSON — still forward, don't reset */ }
+        }
+        openAiSession.send(raw);
     });
 
     clientWs.on('close', (code, reason) => {

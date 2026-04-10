@@ -7,13 +7,15 @@ import { logger } from '../lib/logger';
 export class OpenAIRealtimeSession {
     private readonly upstream: WebSocket;
     private readonly sessionId: string;
+    private readonly systemPrompt: string;
     private readonly maxDurationTimer: NodeJS.Timeout;
     private inactivityTimer: NodeJS.Timeout;
     private closed = false;
     private closeReason = 'upstream_closed';
 
-    constructor(sessionId: string, onMessage: (data: WebSocket.RawData | string) => void, onClose: (reason: string) => void, onError: (message: string) => void) {
+    constructor(sessionId: string, systemPrompt: string, onMessage: (data: WebSocket.RawData | string) => void, onClose: (reason: string) => void, onError: (message: string) => void) {
         this.sessionId = sessionId;
+        this.systemPrompt = systemPrompt;
 
         // Hard cap: close session after maxSessionDurationMs no matter what.
         this.maxDurationTimer = setTimeout(() => {
@@ -41,7 +43,18 @@ export class OpenAIRealtimeSession {
             // OpenAI sends error events as JSON messages, not WS-level errors.
             // Forward them to the browser and log, but keep the session open.
             // Convert text frames to strings so the relay sends text WS frames to the browser.
-            onMessage(isBinary ? data : data.toString());
+            const raw = isBinary ? data : data.toString();
+            // Reset inactivity when the AI finishes a response — active conversation
+            // should never be timed out mid-exchange.
+            if (!isBinary) {
+                try {
+                    const parsed = JSON.parse(raw as string);
+                    if (parsed.type === 'response.done') {
+                        this.resetInactivity();
+                    }
+                } catch { /* ignore */ }
+            }
+            onMessage(raw);
         });
 
         this.upstream.on('error', (err) => {
@@ -111,14 +124,13 @@ export class OpenAIRealtimeSession {
                 voice: config.openai.voice,
                 input_audio_format: config.openai.inputAudioFormat,
                 output_audio_format: config.openai.outputAudioFormat,
+                input_audio_transcription: { model: 'whisper-1' },
                 turn_detection: {
                     type: 'server_vad',
                     threshold: config.openai.vadThreshold,
                     silence_duration_ms: config.openai.silenceDurationMs,
                 },
-                // Phase 4 will replace this placeholder with real persona + Redis knowledge.
-                instructions:
-                    'You are Yubi, a software engineer. Be concise, friendly, and helpful.',
+                instructions: this.systemPrompt,
             },
         };
 

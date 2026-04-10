@@ -25,7 +25,12 @@ const server = http.createServer(app);
 // WebSocket server attached to the same HTTP server, scoped to /ws path.
 const wss = new WebSocketServer({ server, path: '/ws' });
 
-wss.on('connection', handleClientConnection);
+wss.on('connection', (ws, req) => {
+    handleClientConnection(ws, req).catch((err: unknown) => {
+        logger.error('Unhandled error in handleClientConnection', { error: String(err) });
+        ws.close(1011, 'Internal server error');
+    });
+});
 
 wss.on('error', (err) => {
     logger.error('WebSocket server error', { error: err.message });

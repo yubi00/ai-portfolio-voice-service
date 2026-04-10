@@ -14,11 +14,23 @@
     #status { font-size: 0.85rem; color: #aaa; }
     #status.connected { color: #7cfc00; }
     #status.error { color: #ff4444; }
-    #log { background: #1a1a1a; border: 1px solid #333; padding: 1rem; height: 320px; overflow-y: auto; font-size: 0.78rem; line-height: 1.6; }
+    #log { background: #1a1a1a; border: 1px solid #333; padding: 1rem; height: 220px; overflow-y: auto; font-size: 0.78rem; line-height: 1.6; }
     .event-type { color: #7cfc00; }
     .event-error { color: #ff4444; }
     .event-meta { color: #888; }
     .event-info { color: #58a6ff; }
+    #transcript { background: #111; border: 1px solid #333; border-top: none; padding: 1rem; height: 200px; overflow-y: auto; font-size: 0.85rem; line-height: 1.8; }
+    .transcript-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; color: #555; margin-top: 0.6rem; margin-bottom: 0; }
+    #assistantState { color: #888; }
+    .tx-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.1rem; }
+    .tx-user .tx-label { color: #58a6ff; }
+    .tx-ai .tx-label { color: #7cfc00; }
+    .tx-user .tx-text { color: #c9d1d9; }
+    .tx-ai .tx-text { color: #e0e0e0; }
+    .tx-entry { margin-bottom: 0.6rem; }
+    .tx-entry.tx-streaming .tx-label::after { content: ' · streaming'; color: #f7b955; }
+    .tx-entry.tx-speaking .tx-label::after { content: ' · speaking'; color: #7cfc00; }
+    .tx-entry.tx-speaking.tx-streaming .tx-label::after { content: ' · streaming + speaking'; color: #f7b955; }
   </style>
 </head>
 <body>
@@ -35,13 +47,21 @@
     <span id="micStatus" style="font-size:0.85rem;color:#aaa;"></span>
   </div>
 
+  <div style="font-size:0.7rem;color:#555;margin-bottom:0.2rem;margin-top:0.8rem;">[ Event Log ]</div>
   <div id="log"></div>
+  <div class="transcript-header">
+    <span>[ Transcript ]</span>
+    <span id="assistantState">Idle</span>
+  </div>
+  <div id="transcript"></div>
 
   <script>
     // ─── Constants ──────────────────────────────────────────────────────────────
     const WS_URL = 'ws://localhost:3001/ws';
     const TARGET_SAMPLE_RATE = 24000;  // OpenAI Realtime API requires 24kHz PCM16
     const BUFFER_SIZE = 4096;          // ScriptProcessorNode buffer size
+    const LOCAL_INTERRUPT_RMS_THRESHOLD = 0.018;
+    const LOCAL_INTERRUPT_CONSECUTIVE_FRAMES = 2;
 
     // ─── State ───────────────────────────────────────────────────────────────────
     let ws = null;
@@ -51,6 +71,17 @@
     let micSource = null;
     let nextPlayTime = 0;        // schedules audio chunks gaplessly
     let isMicActive = false;
+    let aiTranscriptBuffer = '';
+    const activeSources = [];       // tracks scheduled AudioBufferSourceNodes for cancellation
+    let currentResponseId = null;   // ID of the currently active assistant response
+    const cancelledIds = new Set(); // response IDs cancelled locally while upstream catches up
+    let liveUserEntry = null;
+    let liveAiEntry = null;
+    let isAssistantSpeaking = false;
+    let interruptRequested = false;
+    let hotMicFrames = 0;
+    let assistantTranscriptDone = true;
+    let assistantResponseDone = true;
 
     // ─── DOM refs ────────────────────────────────────────────────────────────────
     const btnConnect    = document.getElementById('btnConnect');
@@ -59,6 +90,8 @@
     const statusEl      = document.getElementById('status');
     const micStatusEl   = document.getElementById('micStatus');
     const logEl         = document.getElementById('log');
+    const transcriptEl  = document.getElementById('transcript');
+    const assistantStateEl = document.getElementById('assistantState');
 
     // ─── Logging ─────────────────────────────────────────────────────────────────
     function appendLog(text, cls = '') {
@@ -71,6 +104,105 @@
 
     function logEvent(type, detail = '') {
       appendLog(`${type}${detail ? ' — ' + detail : ''}`, type.startsWith('error') || type.includes('error') ? 'event-error' : 'event-type');
+    }
+
+    // ─── Transcript ───────────────────────────────────────────────────────────────
+    function appendTranscript(speaker, text) {
+      const entry = document.createElement('div');
+      entry.className = `tx-entry tx-${speaker}`;
+      const label = document.createElement('div');
+      label.className = 'tx-label';
+      label.textContent = speaker === 'user' ? 'You' : 'Yubi';
+      const body = document.createElement('div');
+      body.className = 'tx-text';
+      body.textContent = text;
+      entry.appendChild(label);
+      entry.appendChild(body);
+      transcriptEl.appendChild(entry);
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    }
+
+    function createTranscriptEntry(speaker) {
+      const entry = document.createElement('div');
+      entry.className = `tx-entry tx-${speaker}`;
+      const label = document.createElement('div');
+      label.className = 'tx-label';
+      label.textContent = speaker === 'user' ? 'You' : 'Yubi';
+      const body = document.createElement('div');
+      body.className = 'tx-text';
+      entry.appendChild(label);
+      entry.appendChild(body);
+      transcriptEl.appendChild(entry);
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+      return { entry, body };
+    }
+
+    function setEntryState(entryRef, states) {
+      if (!entryRef) return;
+      entryRef.entry.classList.toggle('tx-streaming', states.streaming);
+      entryRef.entry.classList.toggle('tx-speaking', states.speaking);
+    }
+
+    function updateAssistantState() {
+      if (!assistantStateEl) return;
+      if (isAssistantSpeaking && !assistantTranscriptDone) {
+        assistantStateEl.textContent = 'Generating transcript, speaking audio';
+      } else if (isAssistantSpeaking) {
+        assistantStateEl.textContent = 'Speaking queued audio';
+      } else if (!assistantTranscriptDone || !assistantResponseDone) {
+        assistantStateEl.textContent = 'Generating response';
+      } else {
+        assistantStateEl.textContent = 'Idle';
+      }
+
+      setEntryState(liveAiEntry, {
+        streaming: !assistantTranscriptDone,
+        speaking: isAssistantSpeaking,
+      });
+    }
+
+    function completeAssistantTurn() {
+      updateAssistantState();
+      if (!assistantTranscriptDone || !assistantResponseDone || isAssistantSpeaking) return;
+      finalizeLiveTranscript('ai', aiTranscriptBuffer);
+      aiTranscriptBuffer = '';
+      updateAssistantState();
+    }
+
+    function updateLiveTranscript(speaker, text) {
+      if (!text) return;
+      if (speaker === 'user') {
+        if (!liveUserEntry) liveUserEntry = createTranscriptEntry('user');
+        liveUserEntry.body.textContent = text;
+      } else {
+        if (!liveAiEntry) liveAiEntry = createTranscriptEntry('ai');
+        liveAiEntry.body.textContent = text;
+        updateAssistantState();
+      }
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    }
+
+    function finalizeLiveTranscript(speaker, text) {
+      const value = text?.trim();
+      if (speaker === 'user') {
+        if (liveUserEntry) {
+          if (value) liveUserEntry.body.textContent = value;
+          else liveUserEntry.entry.remove();
+        } else if (value) {
+          appendTranscript('user', value);
+        }
+        liveUserEntry = null;
+        return;
+      }
+
+      if (liveAiEntry) {
+        if (value) liveAiEntry.body.textContent = value;
+        else liveAiEntry.entry.remove();
+      } else if (value) {
+        appendTranscript('ai', value);
+      }
+      liveAiEntry = null;
+      updateAssistantState();
     }
 
     // ─── Audio helpers ────────────────────────────────────────────────────────────
@@ -121,6 +253,63 @@
       const startAt = Math.max(audioCtx.currentTime + 0.02, nextPlayTime);
       src.start(startAt);
       nextPlayTime = startAt + buffer.duration;
+
+      // Track so we can cancel on barge-in
+      activeSources.push(src);
+      src.onended = () => {
+        const idx = activeSources.indexOf(src);
+        if (idx !== -1) activeSources.splice(idx, 1);
+        if (activeSources.length === 0) {
+          isAssistantSpeaking = false;
+          completeAssistantTurn();
+        }
+      };
+    }
+
+    /** Stop all in-flight AI audio immediately (barge-in / interruption). */
+    function cancelAiAudio() {
+      for (const src of activeSources) {
+        try { src.stop(); } catch { /* already ended */ }
+      }
+      activeSources.length = 0;
+      nextPlayTime = 0;
+      isAssistantSpeaking = false;
+      updateAssistantState();
+    }
+
+    function getResponseId(msg) {
+      return msg.response?.id ?? msg.response_id ?? null;
+    }
+
+    function interruptAssistant() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (interruptRequested) return;
+      interruptRequested = true;
+      if (!currentResponseId) {
+        cancelAiAudio();
+        assistantTranscriptDone = true;
+        assistantResponseDone = true;
+        finalizeLiveTranscript('ai', aiTranscriptBuffer);
+        aiTranscriptBuffer = '';
+        updateAssistantState();
+        return;
+      }
+
+      cancelledIds.add(currentResponseId);
+      ws.send(JSON.stringify({ type: 'response.cancel' }));
+      appendLog(`Sent response.cancel for ${currentResponseId}`, 'event-info');
+      cancelAiAudio();
+      assistantTranscriptDone = true;
+      assistantResponseDone = true;
+      finalizeLiveTranscript('ai', aiTranscriptBuffer);
+      aiTranscriptBuffer = '';
+      updateAssistantState();
+    }
+
+    function getRms(float32) {
+      let sum = 0;
+      for (let i = 0; i < float32.length; i++) sum += float32[i] * float32[i];
+      return Math.sqrt(sum / float32.length);
     }
 
     /**
@@ -176,23 +365,63 @@
           case 'error':
             logEvent('error (openai)', `${msg.error?.code} — ${msg.error?.message}`);
             break;
+          case 'response.created':
+            currentResponseId = getResponseId(msg);
+            interruptRequested = false;
+            assistantTranscriptDone = false;
+            assistantResponseDone = false;
+            updateAssistantState();
+            logEvent('response.created', `id=${currentResponseId ?? 'unknown'}`);
+            break;
           case 'response.audio.delta':
-            // Stream AI audio back to speaker
-            if (msg.delta) playAudioChunk(msg.delta);
+            if (msg.delta && !cancelledIds.has(getResponseId(msg))) {
+              isAssistantSpeaking = true;
+              updateAssistantState();
+              playAudioChunk(msg.delta);
+            }
             break;
           case 'response.audio_transcript.delta':
-            // Optional: log transcript as it comes in
-            process.stdout?.write?.(msg.delta);
+            if (msg.delta && !cancelledIds.has(getResponseId(msg))) {
+              aiTranscriptBuffer += msg.delta;
+              updateLiveTranscript('ai', aiTranscriptBuffer);
+            }
+            break;
+          case 'response.audio_transcript.done':
+            assistantTranscriptDone = true;
+            completeAssistantTurn();
+            break;
+          case 'conversation.item.input_audio_transcription.delta':
+            if (msg.delta) updateLiveTranscript('user', msg.delta);
+            break;
+          case 'conversation.item.input_audio_transcription.completed':
+            finalizeLiveTranscript('user', msg.transcript ?? liveUserEntry?.body.textContent ?? '');
             break;
           case 'response.done':
             logEvent('response.done', 'AI finished speaking');
-            nextPlayTime = 0; // reset scheduler for next turn
+            nextPlayTime = 0;
+            assistantResponseDone = true;
+            if (getResponseId(msg)) cancelledIds.delete(getResponseId(msg));
+            if (getResponseId(msg) === currentResponseId) currentResponseId = null;
+            completeAssistantTurn();
+            break;
+          case 'response.cancelled':
+            logEvent('response.cancelled', 'interrupted');
+            cancelAiAudio();
+            assistantTranscriptDone = true;
+            assistantResponseDone = true;
+            finalizeLiveTranscript('ai', aiTranscriptBuffer);
+            aiTranscriptBuffer = '';
+            if (getResponseId(msg)) cancelledIds.delete(getResponseId(msg));
+            if (getResponseId(msg) === currentResponseId) currentResponseId = null;
+            updateAssistantState();
             break;
           case 'input_audio_buffer.speech_started':
-            logEvent('speech_started', 'VAD detected you speaking');
+            logEvent('speech_started', 'VAD detected you speaking — interrupting AI');
+            interruptAssistant();
             break;
           case 'input_audio_buffer.speech_stopped':
             logEvent('speech_stopped', 'VAD detected end of speech');
+            hotMicFrames = 0;
             break;
           default:
             appendLog(`${msg.type}`, 'event-meta');
@@ -213,6 +442,10 @@
 
     function disconnect() {
       stopMic();
+      aiTranscriptBuffer = '';
+      currentResponseId = null;
+      cancelledIds.clear();
+      cancelAiAudio();
       if (ws && ws.readyState === WebSocket.OPEN) ws.close(1000, 'user_disconnect');
       ws = null;
       resetUI();
@@ -229,13 +462,33 @@
         const nativeSampleRate = audioCtx.sampleRate;
         appendLog(`AudioContext native sample rate: ${nativeSampleRate}Hz`, 'event-meta');
 
-        micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            // Suppress the AI's own voice from triggering VAD feedback
+            suppressLocalAudioPlayback: true,
+          },
+          video: false,
+        });
         micSource = audioCtx.createMediaStreamSource(micStream);
 
         processor = audioCtx.createScriptProcessor(BUFFER_SIZE, 1, 1);
         processor.onaudioprocess = (e) => {
           if (!ws || ws.readyState !== WebSocket.OPEN) return;
           const float32 = e.inputBuffer.getChannelData(0);
+          const rms = getRms(float32);
+          if (isAssistantSpeaking && !interruptRequested) {
+            hotMicFrames = rms >= LOCAL_INTERRUPT_RMS_THRESHOLD ? hotMicFrames + 1 : 0;
+            if (hotMicFrames >= LOCAL_INTERRUPT_CONSECUTIVE_FRAMES) {
+              appendLog(`Local interrupt detected (rms=${rms.toFixed(4)})`, 'event-info');
+              interruptAssistant();
+              hotMicFrames = 0;
+            }
+          } else if (rms < LOCAL_INTERRUPT_RMS_THRESHOLD) {
+            hotMicFrames = 0;
+          }
           const resampled = resampleTo24k(float32, nativeSampleRate);
           const int16 = floatToInt16(resampled);
           const base64 = bufferToBase64(int16.buffer);
@@ -259,6 +512,8 @@
       if (processor) { processor.disconnect(); processor = null; }
       if (micSource) { micSource.disconnect(); micSource = null; }
       if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+      hotMicFrames = 0;
+      interruptRequested = false;
       isMicActive = false;
       btnMic.textContent = '🎤 Start Speaking';
       btnMic.classList.remove('active');
@@ -275,6 +530,9 @@
       btnConnect.disabled = false;
       btnDisconnect.disabled = true;
       btnMic.disabled = true;
+      assistantTranscriptDone = true;
+      assistantResponseDone = true;
+      updateAssistantState();
       stopMic();
     }
 

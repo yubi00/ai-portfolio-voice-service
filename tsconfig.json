@@ -11,6 +11,7 @@
     "target": "es2022",
     "types": ["node"],
     "moduleResolution": "node10",
+    "resolveJsonModule": true,
     "ignoreDeprecations": "6.0",
 
     // Other Outputs

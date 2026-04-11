@@ -1,8 +1,15 @@
 import WebSocket from 'ws';
 import { config } from '../config';
+import { findRelevantGithubProjects, formatGithubProjectsForPrompt } from '../knowledge/githubProjects';
 import { logger } from '../lib/logger';
 
 // Single responsibility: manage one upstream WebSocket session with OpenAI Realtime API.
+
+const REALTIME_RESPONSE_STYLE = [
+    'Follow the existing session instructions and stay in the established Yubi persona.',
+    'Always respond in English unless the user explicitly asks for another language.',
+    'Keep voice responses natural and concise. Usually answer in two to four spoken sentences unless the user asks for more detail.',
+].join(' ');
 
 export class OpenAIRealtimeSession {
     private readonly upstream: WebSocket;
@@ -12,6 +19,7 @@ export class OpenAIRealtimeSession {
     private inactivityTimer: NodeJS.Timeout;
     private closed = false;
     private closeReason = 'upstream_closed';
+    private readonly handledTranscriptItemIds = new Set<string>();
 
     constructor(sessionId: string, systemPrompt: string, onMessage: (data: WebSocket.RawData | string) => void, onClose: (reason: string) => void, onError: (message: string) => void) {
         this.sessionId = sessionId;
@@ -48,9 +56,12 @@ export class OpenAIRealtimeSession {
             // should never be timed out mid-exchange.
             if (!isBinary) {
                 try {
-                    const parsed = JSON.parse(raw as string);
+                    const parsed = JSON.parse(raw as string) as { type?: string; transcript?: string; item_id?: string };
                     if (parsed.type === 'response.done') {
                         this.resetInactivity();
+                    }
+                    if (parsed.type === 'conversation.item.input_audio_transcription.completed' && parsed.transcript) {
+                        this.handleCompletedTranscript(parsed.transcript, parsed.item_id);
                     }
                 } catch { /* ignore */ }
             }
@@ -129,6 +140,7 @@ export class OpenAIRealtimeSession {
                     type: 'server_vad',
                     threshold: config.openai.vadThreshold,
                     silence_duration_ms: config.openai.silenceDurationMs,
+                    create_response: false,
                 },
                 instructions: this.systemPrompt,
             },
@@ -136,6 +148,41 @@ export class OpenAIRealtimeSession {
 
         this.upstream.send(JSON.stringify(sessionUpdate));
         logger.debug('Sent session.update to OpenAI', { sessionId: this.sessionId });
+    }
+
+    private handleCompletedTranscript(transcript: string, itemId?: string): void {
+        const trimmedTranscript = transcript.trim();
+        if (!trimmedTranscript) return;
+        if (itemId && this.handledTranscriptItemIds.has(itemId)) return;
+        if (itemId) {
+            this.handledTranscriptItemIds.add(itemId);
+        }
+
+        const matchedProjects = findRelevantGithubProjects(trimmedTranscript, 3);
+        const matchedProjectContext = formatGithubProjectsForPrompt(matchedProjects);
+
+        logger.debug('Creating realtime response with per-turn project context', {
+            sessionId: this.sessionId,
+            transcriptChars: trimmedTranscript.length,
+            matchedProjects: matchedProjects.map((project) => project.name),
+        });
+
+        this.sendResponseCreate(matchedProjectContext);
+    }
+
+    private sendResponseCreate(projectContext: string | null): void {
+        if (this.upstream.readyState !== WebSocket.OPEN) return;
+
+        const responseCreate = {
+            type: 'response.create',
+            response: {
+                instructions: projectContext
+                    ? `${REALTIME_RESPONSE_STYLE}\n\n${projectContext}`
+                    : REALTIME_RESPONSE_STYLE,
+            },
+        };
+
+        this.upstream.send(JSON.stringify(responseCreate));
     }
 
     private logIncomingEvent(data: WebSocket.RawData): void {

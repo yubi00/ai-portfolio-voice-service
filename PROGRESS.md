@@ -108,10 +108,11 @@ These apply to every line written, every phase, no exceptions:
 - [x] Return top-k matched GitHub projects for a user query instead of injecting the full catalog
 - [x] Inject matched project cards into turn-based responses on a per-turn basis
 - [x] Keep a clear fallback when no confident GitHub project match is found
-- [ ] Evaluate whether to port the same retrieval path into Realtime mode after turn-based validation
+- [x] Port the same retrieval path into Realtime mode using manual `response.create` after transcription completes
 - [x] Test: ask about a featured project — confirm the answer stays concise and grounded
 - [x] Test: ask about a non-featured GitHub repo by name — confirm the assistant finds it from local synced data
 - [x] Test: ask broad stack questions like "what React projects have you built?" — confirm only the most relevant repos are surfaced
+- [ ] Test the Realtime mode path with exact-match, broad-query, and unknown-project questions
 
 **Phase 4B done when:** The assistant can answer GitHub project questions from the full local repo catalog without dumping the entire catalog into the system prompt.
 

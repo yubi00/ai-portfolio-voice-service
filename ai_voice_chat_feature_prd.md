@@ -44,6 +44,8 @@ The feature enables users to have a **1:1 audio conversation with an AI version 
 
 ## 5. High-Level Architecture
 
+### 5.1 Realtime Mode
+
 ```mermaid
 graph TD
 
@@ -61,6 +63,33 @@ C -->|Optional| B
 
 B --> F[Neon Postgres (RAG)]
 ```
+
+### 5.2 Turn-Based Mode
+
+```mermaid
+graph TD
+
+A[Frontend - React or Dev Test Page] -->|Terminal Mode| B[FastAPI Backend]
+A -->|Voice Mode| C[Node.js Voice Service]
+
+C --> D[Turn-Based Voice Session]
+D --> E[OpenAI STT]
+D --> F[gpt-4o-mini Chat]
+D --> G[OpenAI TTS]
+
+C --> H[Knowledge Provider]
+H --> H1[InMemoryProvider - current]
+H --> H2[RedisProvider - future]
+
+C -->|Optional| B
+B --> I[Neon Postgres (RAG)]
+```
+
+### 5.3 Mode Selection
+
+- `VOICE_MODE=realtime` → low-latency duplex conversation with native Realtime API semantics
+- `VOICE_MODE=turn-based` → lower-cost speak-then-listen pipeline using STT + text generation + TTS
+- Both modes reuse the same persona/knowledge layer and are intended to converge on the same frontend-facing event contract
 
 ---
 

@@ -163,6 +163,7 @@ These apply to every line written, every phase, no exceptions:
 
 > Goal: Voice feature is integrated into the portfolio React app.
 
+- [x] Capture the intended voice UI direction and interaction model in the PRD for future frontend implementation
 - [ ] Create `VoiceChat` React component with UI states: Idle / Listening / Speaking
 - [ ] Add push-to-talk button OR auto-VAD toggle (start with button, add auto later)
 - [ ] Manage WebSocket lifecycle inside the component (connect on open, disconnect on close)
@@ -180,7 +181,9 @@ These apply to every line written, every phase, no exceptions:
 
 > Goal: Safe to deploy and show to visitors.
 
-- [ ] Add auth/rate-limit to Node WS endpoint (prevent abuse — simple token or origin check)
+- [ ] Add auth checks to Node WS endpoint (prevent abuse — token and/or origin validation)
+- [ ] Add rate limiting for voice session creation and WebSocket usage to control abuse and cost
+- [ ] Add JWT access-token verification path for the real frontend session before opening privileged voice sessions
 - [ ] Add session timeout: auto-close OpenAI WS after N minutes of silence
 - [ ] Add cost guard: max audio seconds per session config
 - [ ] Add graceful reconnect logic on browser WS disconnect

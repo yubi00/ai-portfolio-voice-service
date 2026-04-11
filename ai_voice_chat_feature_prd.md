@@ -105,6 +105,50 @@ B --> I[Neon Postgres (RAG)]
   - Speaking
   - Streaming transcript
 
+#### Intended Product Positioning
+- The voice experience should feel like an interactive interview with Yubi, not a generic support chatbot
+- In voice mode, the assistant should speak in first person as Yubi by default
+- The UI should feel like part of the portfolio itself, not a floating help widget bolted onto the page
+
+#### Intended UX Direction For React Frontend
+- Prefer an embedded voice panel or console-style surface over a small chat bubble
+- The visual tone should sit between a modern terminal and a polished editor panel: calm, intentional, and professional
+- Transcript should be first-class so users can read responses even if they do not want to listen continuously
+- Desktop layout should prioritize an always-visible conversation area; mobile layout can collapse into a bottom sheet or focused panel
+
+#### Core Voice UI States
+- `idle`: clear entry point such as "Talk to Yubi" with a short hint about asking about projects, skills, or experience
+- `listening`: active mic state with obvious visual feedback such as pulse, waveform, or animated indicator
+- `thinking`: brief transition state after the user finishes speaking and before Yubi starts responding
+- `speaking`: streamed assistant transcript plus subtle speaking indicator while audio plays
+- `error`: clear recovery message with a retry path
+
+#### Desired Interaction Style
+- Responses should sound natural, like Yubi answering interview questions, not like a scripted narrator reading profile data
+- The frontend should reinforce that tone by avoiding overly robotic labels or call-center style UI language
+- Suggested transcript styling:
+  - user turns feel lightweight and prompt-like
+  - assistant turns feel more editorial and readable
+  - system state should stay minimal and non-intrusive
+
+#### Suggested React Integration Shape
+- A dedicated `VoiceChat` component should manage:
+  - connection lifecycle
+  - mic permissions
+  - current session state
+  - streamed transcript rendering
+  - audio playback state
+- Keep the voice feature independent from the existing terminal state so voice and terminal modes do not fight over shared UI state
+- The React integration should be able to reuse the same backend event contract for both `realtime` and `turn-based` modes
+
+#### MVP Frontend Experience
+- Open voice panel
+- User sees a short intro line explaining they can ask about Yubi's skills, projects, or work experience
+- User speaks naturally
+- Transcript appears live
+- Assistant responds with audio and text in the same panel
+- User can interrupt and ask a follow-up without leaving the conversation surface
+
 ---
 
 ### 6.2 Node.js Voice Service (NEW)

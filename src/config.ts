@@ -19,9 +19,20 @@ function optionalInt(key: string, defaultValue: number): number {
     return parsed;
 }
 
+function optionalVoiceMode(key: string, defaultValue: 'realtime' | 'turn-based'): 'realtime' | 'turn-based' {
+    const raw = process.env[key];
+    if (!raw) return defaultValue;
+    if (raw === 'realtime' || raw === 'turn-based') return raw;
+    throw new Error(`Env var ${key} must be one of: realtime, turn-based. Got: "${raw}"`);
+}
+
 export const config = {
     port: parseInt(process.env.PORT ?? '3001', 10),
     nodeEnv: process.env.NODE_ENV ?? 'development',
+
+    voice: {
+        mode: optionalVoiceMode('VOICE_MODE', 'realtime'),
+    },
 
     openai: {
         apiKey: requireEnv('OPENAI_API_KEY'),

@@ -40,6 +40,7 @@ server.listen(config.port, () => {
     logger.info('Voice service started', {
         port: config.port,
         env: config.nodeEnv,
+        voiceMode: config.voice.mode,
         model: config.openai.model,
     });
 });

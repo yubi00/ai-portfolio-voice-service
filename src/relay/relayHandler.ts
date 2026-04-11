@@ -1,9 +1,9 @@
 import WebSocket from 'ws';
 import { IncomingMessage } from 'http';
-import { OpenAIRealtimeSession } from './OpenAIRealtimeSession';
 import { logger } from '../lib/logger';
 import { config } from '../config';
 import { knowledgeProvider, buildSystemPrompt } from '../knowledge';
+import { createVoiceSession } from '../voice';
 
 // Single responsibility: manage the relay between one browser client and one OpenAI session.
 
@@ -49,29 +49,31 @@ export async function handleClientConnection(clientWs: WebSocket, req: IncomingM
     // Build persona + knowledge system prompt before opening the upstream connection.
     const systemPrompt = await buildSystemPrompt(knowledgeProvider);
 
-    const openAiSession = new OpenAIRealtimeSession(
+    const voiceSession = createVoiceSession(
         sessionId,
         systemPrompt,
-        // Forward OpenAI messages → browser (includes OpenAI-level error events)
-        (data) => {
-            if (clientWs.readyState === WebSocket.OPEN) {
-                clientWs.send(data);
-            }
+        {
+            // Forward backend messages → browser (includes provider-specific error events)
+            onMessage: (data) => {
+                if (clientWs.readyState === WebSocket.OPEN) {
+                    clientWs.send(data);
+                }
+            },
+            // When the voice session closes → notify browser with reason, then close
+            onClose: (reason) => {
+                activeSessions = Math.max(0, activeSessions - 1);
+                if (clientWs.readyState === WebSocket.OPEN) {
+                    clientWs.send(JSON.stringify({ type: 'session.closed', reason }));
+                    clientWs.close(1000, reason);
+                }
+            },
+            // Transport/backend errors (OpenAI API errors still come via message events)
+            onError: (message) => {
+                if (clientWs.readyState === WebSocket.OPEN) {
+                    clientWs.send(JSON.stringify({ type: 'relay.error', message }));
+                }
+            },
         },
-        // When OpenAI session closes → notify browser with reason, then close
-        (reason) => {
-            activeSessions = Math.max(0, activeSessions - 1);
-            if (clientWs.readyState === WebSocket.OPEN) {
-                clientWs.send(JSON.stringify({ type: 'session.closed', reason }));
-                clientWs.close(1000, reason);
-            }
-        },
-        // WS-level transport error (not OpenAI API errors — those come via message events)
-        (message) => {
-            if (clientWs.readyState === WebSocket.OPEN) {
-                clientWs.send(JSON.stringify({ type: 'relay.error', message }));
-            }
-        }
     );
 
     // Forward browser messages → OpenAI, and reset the inactivity timer each time.
@@ -88,11 +90,11 @@ export async function handleClientConnection(clientWs: WebSocket, req: IncomingM
             try {
                 const parsed = JSON.parse(raw as string);
                 if (parsed.type !== 'input_audio_buffer.append') {
-                    openAiSession.resetInactivity();
+                    voiceSession.resetInactivity();
                 }
             } catch { /* malformed JSON — still forward, don't reset */ }
         }
-        openAiSession.send(raw);
+        voiceSession.send(raw);
     });
 
     clientWs.on('close', (code, reason) => {
@@ -103,11 +105,11 @@ export async function handleClientConnection(clientWs: WebSocket, req: IncomingM
             reason: reason.toString(),
             activeSessions,
         });
-        openAiSession.close('client_disconnect');
+        voiceSession.close('client_disconnect');
     });
 
     clientWs.on('error', (err) => {
         logger.error('Browser client WS error', { sessionId, error: err.message });
-        openAiSession.close('client_error');
+        voiceSession.close('client_error');
     });
 }

@@ -62,15 +62,15 @@ These apply to every line written, every phase, no exceptions:
 
 > Goal: Browser captures mic audio and streams PCM16 chunks to Node relay.
 
-- [ ] Create minimal frontend HTML/JS test page (no React yet, keep it simple)
-- [ ] Request mic via `getUserMedia({ audio: true })`
-- [ ] Use `AudioContext` + `ScriptProcessorNode` (or `AudioWorkletNode`) to capture PCM16 at 24kHz
-- [ ] Open WebSocket to Node relay from browser
-- [ ] Send audio as `input_audio_buffer.append` events (base64 encoded PCM16 chunks)
-- [ ] Receive `response.audio.delta` events from Node relay
-- [ ] Decode base64 audio delta and queue for playback via `AudioContext`
-- [ ] Play audio chunks in order without gaps
-- [ ] Test: speak into mic → hear AI voice response played back
+- [x] Create minimal frontend HTML/JS test page (no React yet, keep it simple)
+- [x] Request mic via `getUserMedia({ audio: true })`
+- [x] Use `AudioContext` + `ScriptProcessorNode` (or `AudioWorkletNode`) to capture PCM16 at 24kHz
+- [x] Open WebSocket to Node relay from browser
+- [x] Send audio as `input_audio_buffer.append` events (base64 encoded PCM16 chunks)
+- [x] Receive `response.audio.delta` events from Node relay
+- [x] Decode base64 audio delta and queue for playback via `AudioContext`
+- [x] Play audio chunks in order without gaps
+- [x] Test: speak into mic → hear AI voice response played back
 
 **Phase 3 done when:** Can have a basic voice conversation end-to-end (no persona, no knowledge yet).
 
@@ -116,14 +116,15 @@ These apply to every line written, every phase, no exceptions:
 
 > Goal: Keep the Realtime path, but make the voice layer swappable so production can use a cheaper turn-based STT + LLM + TTS pipeline.
 
-- [ ] Define a `VoiceSessionService` / `AudioConversationService` interface for the voice orchestration layer
-- [ ] Add a thin adapter/wrapper around the existing Realtime implementation — no behavioral changes to the current Realtime code path
-- [ ] Add config-based mode selection (for example: `VOICE_MODE=realtime|turn-based`)
+- [x] Define a `VoiceSessionService` / `AudioConversationService` interface for the voice orchestration layer
+- [x] Add a thin adapter/wrapper around the existing Realtime implementation — no behavioral changes to the current Realtime code path
+- [x] Add config-based mode selection (for example: `VOICE_MODE=realtime|turn-based`)
 - [ ] Design the turn-based flow: browser utterance -> STT -> LLM -> TTS -> playback
 - [ ] Reuse existing persona/knowledge prompt building in both modes
-- [ ] Define transcript/event contract that both implementations can emit to the frontend
-- [ ] Keep the current Realtime implementation as the stable reference path for demos/dev
-- [ ] Do not modify the existing Realtime behavior while introducing the abstraction layer
+- [ ] Implement the turn-based backend mode behind the same interface
+- [x] Define transcript/event contract that both implementations can emit to the frontend
+- [x] Keep the current Realtime implementation as the stable reference path for demos/dev
+- [x] Do not modify the existing Realtime behavior while introducing the abstraction layer
 - [ ] Document trade-offs: Realtime = barge-in/full duplex, Turn-based = cheaper but no mid-sentence interrupt
 
 **Phase 6 done when:** The codebase can support both Realtime and low-cost turn-based voice backends without changing frontend-facing behavior, and the current Realtime path remains behaviorally unchanged.

@@ -64,8 +64,23 @@
     const WS_URL = 'ws://localhost:3001/ws';
     const TARGET_SAMPLE_RATE = 24000;  // OpenAI Realtime API requires 24kHz PCM16
     const BUFFER_SIZE = 4096;          // ScriptProcessorNode buffer size
-    const LOCAL_INTERRUPT_RMS_THRESHOLD = 0.018;
-    const LOCAL_INTERRUPT_CONSECUTIVE_FRAMES = 2;
+    const INTERRUPT_CONFIG = {
+      realtime: {
+        rmsThreshold: 0.018,
+        consecutiveFrames: 2,
+        allowServerSpeechInterrupt: true,
+      },
+      'turn-based': {
+        rmsThreshold: 0.024,
+        consecutiveFrames: 3,
+        allowServerSpeechInterrupt: true,
+      },
+      unknown: {
+        rmsThreshold: 0.022,
+        consecutiveFrames: 3,
+        allowServerSpeechInterrupt: true,
+      },
+    };
 
     // ─── State ───────────────────────────────────────────────────────────────────
     let ws = null;
@@ -120,6 +135,10 @@
         : activeMode === 'turn-based'
           ? 'mode-turn-based'
           : '';
+    }
+
+    function getInterruptConfig() {
+      return INTERRUPT_CONFIG[activeMode] || INTERRUPT_CONFIG.unknown;
     }
 
     // ─── Transcript ───────────────────────────────────────────────────────────────
@@ -434,8 +453,8 @@
             updateAssistantState();
             break;
           case 'input_audio_buffer.speech_started':
-            logEvent('speech_started', 'VAD detected you speaking — interrupting AI');
-            interruptAssistant();
+            logEvent('speech_started', 'VAD detected you speaking');
+            if (getInterruptConfig().allowServerSpeechInterrupt) interruptAssistant();
             break;
           case 'input_audio_buffer.speech_stopped':
             logEvent('speech_stopped', 'VAD detected end of speech');
@@ -497,14 +516,15 @@
           if (!ws || ws.readyState !== WebSocket.OPEN) return;
           const float32 = e.inputBuffer.getChannelData(0);
           const rms = getRms(float32);
+          const interruptConfig = getInterruptConfig();
           if (isAssistantSpeaking && !interruptRequested) {
-            hotMicFrames = rms >= LOCAL_INTERRUPT_RMS_THRESHOLD ? hotMicFrames + 1 : 0;
-            if (hotMicFrames >= LOCAL_INTERRUPT_CONSECUTIVE_FRAMES) {
+            hotMicFrames = rms >= interruptConfig.rmsThreshold ? hotMicFrames + 1 : 0;
+            if (hotMicFrames >= interruptConfig.consecutiveFrames) {
               appendLog(`Local interrupt detected (rms=${rms.toFixed(4)})`, 'event-info');
               interruptAssistant();
               hotMicFrames = 0;
             }
-          } else if (rms < LOCAL_INTERRUPT_RMS_THRESHOLD) {
+          } else if (rms < interruptConfig.rmsThreshold) {
             hotMicFrames = 0;
           }
           const resampled = resampleTo24k(float32, nativeSampleRate);

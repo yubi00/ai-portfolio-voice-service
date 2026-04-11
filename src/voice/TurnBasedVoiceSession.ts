@@ -4,6 +4,8 @@ import { config } from '../config';
 import { logger } from '../lib/logger';
 import { VoiceSession, VoiceSessionCallbacks } from './VoiceSession';
 
+const TURN_BASED_RESPONSE_STYLE = 'You are in turn-based voice mode. Keep replies concise and spoken: usually 1 to 2 short sentences, roughly under 45 words unless the user explicitly asks for more detail.';
+
 type ChatMessage = {
     role: 'user' | 'assistant';
     content: string;
@@ -15,10 +17,12 @@ export class TurnBasedVoiceSession implements VoiceSession {
     private inactivityTimer: NodeJS.Timeout;
     private readonly history: ChatMessage[] = [];
     private readonly pcmChunks: Buffer[] = [];
+    private readonly queuedAudioChunks: Buffer[] = [];
     private speechActive = false;
     private speechDurationMs = 0;
     private silenceDurationMs = 0;
     private processingTurn = false;
+    private flushingQueuedAudio = false;
     private closed = false;
     private closeReason = 'normal';
     private responseCounter = 0;
@@ -127,9 +131,38 @@ export class TurnBasedVoiceSession implements VoiceSession {
 
     private async handleAudioAppend(base64Audio: string): Promise<void> {
         this.resetInactivity();
-        if (this.processingTurn) return;
-
         const chunk = Buffer.from(base64Audio, 'base64');
+        if (this.processingTurn) {
+            this.handleQueuedAudioDuringProcessing(chunk);
+            return;
+        }
+
+        await this.ingestAudioChunk(chunk);
+    }
+
+    private handleQueuedAudioDuringProcessing(chunk: Buffer): void {
+        const rms = computePcm16Rms(chunk);
+        const isSpeech = rms >= config.voice.turnBased.silenceThreshold;
+
+        if (!isSpeech && !this.speechActive && this.queuedAudioChunks.length === 0) {
+            return;
+        }
+
+        this.queuedAudioChunks.push(chunk);
+
+        if (isSpeech && !this.speechActive) {
+            this.speechActive = true;
+            logger.debug('Turn-based interruption speech started during active turn', {
+                sessionId: this.sessionId,
+                rms,
+                responseId: this.activeResponseId,
+            });
+            this.emit({ type: 'input_audio_buffer.speech_started' });
+            this.cancelActiveResponse();
+        }
+    }
+
+    private async ingestAudioChunk(chunk: Buffer): Promise<void> {
         const rms = computePcm16Rms(chunk);
         const durationMs = getPcm16ChunkDurationMs(chunk);
         const isSpeech = rms >= config.voice.turnBased.silenceThreshold;
@@ -175,6 +208,31 @@ export class TurnBasedVoiceSession implements VoiceSession {
         const utterance = Buffer.concat(this.pcmChunks);
         this.resetSpeechBuffer();
         await this.processTurn(utterance);
+    }
+
+    private scheduleQueuedAudioFlush(): void {
+        if (this.flushingQueuedAudio || this.closed || this.queuedAudioChunks.length === 0) return;
+        queueMicrotask(() => {
+            void this.flushQueuedAudio();
+        });
+    }
+
+    private async flushQueuedAudio(): Promise<void> {
+        if (this.flushingQueuedAudio || this.closed) return;
+        this.flushingQueuedAudio = true;
+
+        try {
+            while (!this.closed && !this.processingTurn && this.queuedAudioChunks.length > 0) {
+                const chunk = this.queuedAudioChunks.shift();
+                if (!chunk) break;
+                await this.ingestAudioChunk(chunk);
+            }
+        } finally {
+            this.flushingQueuedAudio = false;
+            if (!this.closed && !this.processingTurn && this.queuedAudioChunks.length > 0) {
+                this.scheduleQueuedAudioFlush();
+            }
+        }
     }
 
     private resetSpeechBuffer(): void {
@@ -267,6 +325,7 @@ export class TurnBasedVoiceSession implements VoiceSession {
             this.processingTurn = false;
             this.abortController = null;
             this.resetInactivity();
+            this.scheduleQueuedAudioFlush();
         }
     }
 
@@ -308,7 +367,7 @@ export class TurnBasedVoiceSession implements VoiceSession {
                 model: config.voice.turnBased.chatModel,
                 stream: true,
                 messages: [
-                    { role: 'system', content: this.systemPrompt },
+                    { role: 'system', content: `${this.systemPrompt}\n\n${TURN_BASED_RESPONSE_STYLE}` },
                     ...this.history.map((message) => ({ role: message.role, content: message.content })),
                     { role: 'user', content: userTranscript },
                 ],

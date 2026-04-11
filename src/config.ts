@@ -34,6 +34,10 @@ function optionalFloat(key: string, defaultValue: number): number {
     return parsed;
 }
 
+function optionalString(key: string, defaultValue: string): string {
+    return process.env[key] ?? defaultValue;
+}
+
 export const config = {
     port: parseInt(process.env.PORT ?? '3001', 10),
     nodeEnv: process.env.NODE_ENV ?? 'development',
@@ -45,8 +49,8 @@ export const config = {
             chatModel: process.env.TURN_BASED_CHAT_MODEL ?? 'gpt-4o-mini',
             ttsModel: process.env.TURN_BASED_TTS_MODEL ?? 'gpt-4o-mini-tts',
             silenceThreshold: optionalFloat('TURN_BASED_SILENCE_THRESHOLD', 0.015),
-            silenceDurationMs: optionalInt('TURN_BASED_SILENCE_DURATION_MS', 700),
-            minSpeechDurationMs: optionalInt('TURN_BASED_MIN_SPEECH_DURATION_MS', 250),
+            silenceDurationMs: optionalInt('TURN_BASED_SILENCE_DURATION_MS', 450),
+            minSpeechDurationMs: optionalInt('TURN_BASED_MIN_SPEECH_DURATION_MS', 180),
             pcmChunkBytes: optionalInt('TURN_BASED_PCM_CHUNK_BYTES', 4800),
             maxHistoryMessages: optionalInt('TURN_BASED_MAX_HISTORY_MESSAGES', 8),
         },
@@ -56,7 +60,7 @@ export const config = {
         apiKey: requireEnv('OPENAI_API_KEY'),
         model: 'gpt-4o-realtime-preview',
         get realtimeUrl() { return `wss://api.openai.com/v1/realtime?model=${this.model}`; },
-        voice: 'alloy' as const,
+        voice: optionalString('OPENAI_VOICE', 'echo'),
         inputAudioFormat: 'pcm16' as const,
         outputAudioFormat: 'pcm16' as const,
         silenceDurationMs: 600,

@@ -119,13 +119,13 @@ These apply to every line written, every phase, no exceptions:
 - [x] Define a `VoiceSessionService` / `AudioConversationService` interface for the voice orchestration layer
 - [x] Add a thin adapter/wrapper around the existing Realtime implementation — no behavioral changes to the current Realtime code path
 - [x] Add config-based mode selection (for example: `VOICE_MODE=realtime|turn-based`)
-- [ ] Design the turn-based flow: browser utterance -> STT -> LLM -> TTS -> playback
-- [ ] Reuse existing persona/knowledge prompt building in both modes
-- [ ] Implement the turn-based backend mode behind the same interface
+- [x] Design the turn-based flow: browser utterance -> STT -> LLM -> TTS -> playback
+- [x] Reuse existing persona/knowledge prompt building in both modes
+- [x] Implement the turn-based backend mode behind the same interface
 - [x] Define transcript/event contract that both implementations can emit to the frontend
 - [x] Keep the current Realtime implementation as the stable reference path for demos/dev
 - [x] Do not modify the existing Realtime behavior while introducing the abstraction layer
-- [ ] Document trade-offs: Realtime = barge-in/full duplex, Turn-based = cheaper but no mid-sentence interrupt
+- [x] Document trade-offs: Realtime = barge-in/full duplex, Turn-based = cheaper but no mid-sentence interrupt
 
 **Phase 6 done when:** The codebase can support both Realtime and low-cost turn-based voice backends without changing frontend-facing behavior, and the current Realtime path remains behaviorally unchanged.
 

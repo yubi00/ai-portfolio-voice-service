@@ -26,12 +26,30 @@ function optionalVoiceMode(key: string, defaultValue: 'realtime' | 'turn-based')
     throw new Error(`Env var ${key} must be one of: realtime, turn-based. Got: "${raw}"`);
 }
 
+function optionalFloat(key: string, defaultValue: number): number {
+    const raw = process.env[key];
+    if (!raw) return defaultValue;
+    const parsed = parseFloat(raw);
+    if (isNaN(parsed)) throw new Error(`Env var ${key} must be a number, got: "${raw}"`);
+    return parsed;
+}
+
 export const config = {
     port: parseInt(process.env.PORT ?? '3001', 10),
     nodeEnv: process.env.NODE_ENV ?? 'development',
 
     voice: {
         mode: optionalVoiceMode('VOICE_MODE', 'realtime'),
+        turnBased: {
+            transcriptionModel: process.env.TURN_BASED_TRANSCRIPTION_MODEL ?? 'whisper-1',
+            chatModel: process.env.TURN_BASED_CHAT_MODEL ?? 'gpt-4o-mini',
+            ttsModel: process.env.TURN_BASED_TTS_MODEL ?? 'gpt-4o-mini-tts',
+            silenceThreshold: optionalFloat('TURN_BASED_SILENCE_THRESHOLD', 0.015),
+            silenceDurationMs: optionalInt('TURN_BASED_SILENCE_DURATION_MS', 700),
+            minSpeechDurationMs: optionalInt('TURN_BASED_MIN_SPEECH_DURATION_MS', 250),
+            pcmChunkBytes: optionalInt('TURN_BASED_PCM_CHUNK_BYTES', 4800),
+            maxHistoryMessages: optionalInt('TURN_BASED_MAX_HISTORY_MESSAGES', 8),
+        },
     },
 
     openai: {

@@ -41,7 +41,14 @@ server.listen(config.port, () => {
         port: config.port,
         env: config.nodeEnv,
         voiceMode: config.voice.mode,
-        model: config.openai.model,
+        model:
+            config.voice.mode === 'realtime'
+                ? config.openai.model
+                : {
+                    transcription: config.voice.turnBased.transcriptionModel,
+                    chat: config.voice.turnBased.chatModel,
+                    tts: config.voice.turnBased.ttsModel,
+                },
     });
 });
 

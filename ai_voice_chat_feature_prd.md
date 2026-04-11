@@ -327,6 +327,7 @@ With OpenAI Realtime API, STT, LLM, and TTS are handled in a **single streaming 
 - Add a lower-cost turn-based STT + LLM + TTS implementation
 - Select implementation via config without changing frontend-facing contracts
 - Preserve the current Realtime behavior for demos/dev while adding the cheaper production path in parallel
+- Turn-based flow: browser PCM utterance -> server-side silence detection -> transcription -> `gpt-4o-mini` text generation -> TTS PCM playback
 
 ### Phase 6: React Integration
 - Integrate voice chat into the real portfolio frontend
@@ -353,6 +354,7 @@ With OpenAI Realtime API, STT, LLM, and TTS are handled in a **single streaming 
 - Speed + simplicity vs vendor lock-in (chose OpenAI Realtime API for both)
 - Preloaded provider-backed knowledge vs live RAG (preload wins for latency)
 - Server VAD plus local interrupt detection vs server-only VAD (hybrid chosen for faster barge-in)
+- Realtime mode gives barge-in + full duplex feel; turn-based mode is much cheaper but behaves like speak-then-listen
 
 ---
 

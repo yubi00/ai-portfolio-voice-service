@@ -1,0 +1,50 @@
+{
+  "featuredRepos": [
+    "ai-portfolio-voice-service",
+    "claude-agentic-rag-pipeline",
+    "matchcast",
+    "yubi-portfolio",
+    "ticketing-app",
+    "publift-typescript",
+    "graphql-CRUD",
+    "superhero-app"
+  ],
+  "aliases": {
+    "ai-portfolio-voice-service": [
+      "voice portfolio",
+      "voice service",
+      "portfolio voice service"
+    ],
+    "claude-agentic-rag-pipeline": [
+      "rag pipeline",
+      "agentic rag pipeline",
+      "claude rag pipeline"
+    ],
+    "matchcast": [
+      "match cast",
+      "epl pundit app",
+      "football audio app"
+    ],
+    "yubi-portfolio": [
+      "old portfolio",
+      "mern portfolio"
+    ],
+    "ticketing-app": [
+      "ticketing microservice app",
+      "microservice ticketing app"
+    ],
+    "publift-typescript": [
+      "csv processing api",
+      "publift challenge"
+    ],
+    "graphql-CRUD": [
+      "graphql crud",
+      "perng graphql crud"
+    ],
+    "superhero-app": [
+      "super hero app",
+      "superhero search app"
+    ]
+  },
+  "excludedRepos": []
+}

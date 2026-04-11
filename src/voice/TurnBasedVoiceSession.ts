@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import OpenAI, { toFile } from 'openai';
 import { config } from '../config';
+import { findRelevantGithubProjects, formatGithubProjectsForPrompt } from '../knowledge/githubProjects';
 import { logger } from '../lib/logger';
 import { VoiceSession, VoiceSessionCallbacks } from './VoiceSession';
 
@@ -355,12 +356,16 @@ export class TurnBasedVoiceSession implements VoiceSession {
     }
 
     private async generateAssistantText(userTranscript: string, responseId: string, signal: AbortSignal): Promise<string> {
+        const matchedProjects = findRelevantGithubProjects(userTranscript, 3);
+        const matchedProjectContext = formatGithubProjectsForPrompt(matchedProjects);
+
         logger.debug('Turn-based chat generation started', {
             sessionId: this.sessionId,
             responseId,
             model: config.voice.turnBased.chatModel,
             userChars: userTranscript.length,
             historyMessages: this.history.length,
+            matchedProjects: matchedProjects.map((project) => project.name),
         });
         const stream = await this.client.chat.completions.create(
             {
@@ -368,6 +373,7 @@ export class TurnBasedVoiceSession implements VoiceSession {
                 stream: true,
                 messages: [
                     { role: 'system', content: `${this.systemPrompt}\n\n${TURN_BASED_RESPONSE_STYLE}` },
+                    ...(matchedProjectContext ? [{ role: 'system' as const, content: matchedProjectContext }] : []),
                     ...this.history.map((message) => ({ role: message.role, content: message.content })),
                     { role: 'user', content: userTranscript },
                 ],

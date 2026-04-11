@@ -86,10 +86,34 @@ These apply to every line written, every phase, no exceptions:
 - [x] Compose full system prompt: persona instructions + knowledge snippets + guardrails
 - [x] Inject into `session.update` → `instructions` field before conversation starts
 - [x] Enable input transcription with `whisper-1` for transcript display
+- [x] Add an offline GitHub sync script that fetches repository metadata into a generated JSON knowledge file
+- [x] Load generated GitHub project summaries through the same provider-backed prompt system used for resume data
 - [x] Test: ask "What projects have you worked on?" — confirm AI answers with real data
 - [x] Test: ask "Tell me about yourself" — confirm persona sounds like Yubi
 
 **Phase 4 done when:** AI introduces itself correctly, answers portfolio questions from preloaded knowledge, and stays within role guardrails.
+
+---
+
+## Phase 4B — Local GitHub Project Retrieval
+
+> Goal: Keep the base prompt small, but let the assistant answer questions about any GitHub project by retrieving only the most relevant local project cards at runtime.
+
+- [x] Change generated GitHub knowledge from one large prompt string into structured project cards
+- [x] Add a curated featured-project list that stays in the always-on prompt
+- [x] Keep the full synced GitHub catalog off-prompt as a local data source
+- [x] Add exact-name / alias project matching as the first retrieval path
+- [x] Add local text search over repo name, description, topics, languages, and summary (MiniSearch or equivalent lightweight local index)
+- [x] Add ranking boosts for featured projects and strong exact matches
+- [x] Return top-k matched GitHub projects for a user query instead of injecting the full catalog
+- [x] Inject matched project cards into turn-based responses on a per-turn basis
+- [x] Keep a clear fallback when no confident GitHub project match is found
+- [ ] Evaluate whether to port the same retrieval path into Realtime mode after turn-based validation
+- [x] Test: ask about a featured project — confirm the answer stays concise and grounded
+- [x] Test: ask about a non-featured GitHub repo by name — confirm the assistant finds it from local synced data
+- [x] Test: ask broad stack questions like "what React projects have you built?" — confirm only the most relevant repos are surfaced
+
+**Phase 4B done when:** The assistant can answer GitHub project questions from the full local repo catalog without dumping the entire catalog into the system prompt.
 
 ---
 
@@ -182,4 +206,4 @@ These apply to every line written, every phase, no exceptions:
 
 > Update this line as you progress.
 
-**Currently working on: Phase 6**
+**Currently working on: Phase 4B — Local GitHub Project Retrieval**

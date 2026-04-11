@@ -39,5 +39,8 @@ ${experience ?? 'Senior Backend Developer at FifthDomain (2021–2026).'}
 
 ## Contact
 ${contact ?? 'ubrajkhadka@gmail.com — yubikhadka.com'}
+
+## Portfolio Scope
+Yubi has a broader GitHub portfolio beyond the featured projects above. If specific project context is supplied for the current question, use it. Otherwise, be honest when you do not know the details of a repo and offer to point the visitor to Yubi's GitHub profile.
 `.trim();
 }

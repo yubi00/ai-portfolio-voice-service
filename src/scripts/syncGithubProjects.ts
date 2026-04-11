@@ -38,15 +38,56 @@ type GithubProjectCard = {
     stars: number;
     archived: boolean;
     featured: boolean;
+    signals: ProjectSignals;
+    initiative: ProjectInitiative | null;
     aliases: string[];
     keywords: string[];
     pushedAt: string;
     updatedAt: string;
 };
 
+type ProjectInitiative = {
+    name: string;
+    role: string;
+    summary: string;
+};
+
+type ProjectSignals = {
+    proudOf: number;
+    recommendedFirstLook: number;
+    aiShowcase: number;
+    orchestration: number;
+    backendShowcase: number;
+};
+
+type ManualProjectConfig = {
+    name: string;
+    fullName?: string;
+    description: string;
+    summary: string;
+    url?: string;
+    homepage?: string | null;
+    primaryLanguage?: string | null;
+    languages?: string[];
+    topics?: string[];
+    stars?: number;
+    archived?: boolean;
+    featured?: boolean;
+    signals?: Partial<ProjectSignals>;
+    initiative?: ProjectInitiative;
+    aliases?: string[];
+    keywords?: string[];
+    pushedAt?: string;
+    updatedAt?: string;
+};
+
 type SyncConfig = {
     featuredRepos?: string[];
     aliases?: Record<string, string[]>;
+    signals?: Record<string, Partial<ProjectSignals>>;
+    initiativeGroups?: Record<string, ProjectInitiative>;
+    includedPrivateRepos?: string[];
+    manualProjects?: ManualProjectConfig[];
     excludedRepos?: string[];
 };
 
@@ -77,12 +118,12 @@ async function fetchGithubJson<T>(pathname: string): Promise<T> {
     return response.json() as Promise<T>;
 }
 
-async function listUserRepos(username: string): Promise<GithubRepo[]> {
+async function listUserRepos(): Promise<GithubRepo[]> {
     const repos: GithubRepo[] = [];
 
     for (let page = 1; ; page += 1) {
         const batch = await fetchGithubJson<GithubRepo[]>(
-            `/users/${username}/repos?per_page=100&page=${page}&sort=updated&type=owner`,
+            `/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner`,
         );
 
         if (batch.length === 0) break;
@@ -167,6 +208,8 @@ function extractKeywords(repo: GithubRepo, languages: string[], aliases: string[
 function toProjectCard(repo: GithubRepo, languages: string[]): GithubProjectCard {
     const aliases = projectSyncConfig.aliases?.[repo.name] ?? [];
     const featuredRepoSet = new Set(projectSyncConfig.featuredRepos ?? []);
+    const configuredSignals = projectSyncConfig.signals?.[repo.name] ?? {};
+    const initiative = projectSyncConfig.initiativeGroups?.[repo.name] ?? null;
     return {
         id: repo.full_name,
         name: repo.name,
@@ -181,6 +224,14 @@ function toProjectCard(repo: GithubRepo, languages: string[]): GithubProjectCard
         stars: repo.stargazers_count,
         archived: repo.archived,
         featured: featuredRepoSet.has(repo.name),
+        signals: {
+            proudOf: configuredSignals.proudOf ?? 0,
+            recommendedFirstLook: configuredSignals.recommendedFirstLook ?? 0,
+            aiShowcase: configuredSignals.aiShowcase ?? 0,
+            orchestration: configuredSignals.orchestration ?? 0,
+            backendShowcase: configuredSignals.backendShowcase ?? 0,
+        },
+        initiative,
         aliases,
         keywords: extractKeywords(repo, languages, aliases),
         pushedAt: repo.pushed_at,
@@ -188,13 +239,72 @@ function toProjectCard(repo: GithubRepo, languages: string[]): GithubProjectCard
     };
 }
 
+function toManualProjectCard(project: ManualProjectConfig): GithubProjectCard {
+    const aliases = project.aliases ?? projectSyncConfig.aliases?.[project.name] ?? [];
+    const featuredRepoSet = new Set(projectSyncConfig.featuredRepos ?? []);
+    const configuredSignals = {
+        ...(projectSyncConfig.signals?.[project.name] ?? {}),
+        ...(project.signals ?? {}),
+    };
+    const initiative = project.initiative ?? projectSyncConfig.initiativeGroups?.[project.name] ?? null;
+    const languages = project.languages ?? [];
+    const topics = project.topics ?? [];
+
+    return {
+        id: project.fullName ?? `manual/${project.name}`,
+        name: project.name,
+        fullName: project.fullName ?? `manual/${project.name}`,
+        description: project.description,
+        summary: project.summary,
+        url: project.url ?? `https://github.com/${project.fullName ?? `${GITHUB_USERNAME}/${project.name}`}`,
+        homepage: project.homepage ?? null,
+        primaryLanguage: project.primaryLanguage ?? null,
+        languages,
+        topics,
+        stars: project.stars ?? 0,
+        archived: project.archived ?? false,
+        featured: project.featured ?? featuredRepoSet.has(project.name),
+        signals: {
+            proudOf: configuredSignals.proudOf ?? 0,
+            recommendedFirstLook: configuredSignals.recommendedFirstLook ?? 0,
+            aiShowcase: configuredSignals.aiShowcase ?? 0,
+            orchestration: configuredSignals.orchestration ?? 0,
+            backendShowcase: configuredSignals.backendShowcase ?? 0,
+        },
+        initiative,
+        aliases,
+        keywords: Array.from(new Set([
+            ...extractKeywords({
+                name: project.name,
+                full_name: project.fullName ?? `${GITHUB_USERNAME}/${project.name}`,
+                private: true,
+                fork: false,
+                archived: project.archived ?? false,
+                description: project.description,
+                html_url: project.url ?? `https://github.com/${project.fullName ?? `${GITHUB_USERNAME}/${project.name}`}`,
+                homepage: project.homepage ?? null,
+                language: project.primaryLanguage ?? null,
+                topics,
+                stargazers_count: project.stars ?? 0,
+                pushed_at: project.pushedAt ?? 'not-synced',
+                created_at: project.updatedAt ?? 'not-synced',
+                updated_at: project.updatedAt ?? 'not-synced',
+            }, languages, aliases),
+            ...(project.keywords ?? []).map((value) => normalizeText(value)),
+        ])),
+        pushedAt: project.pushedAt ?? 'not-synced',
+        updatedAt: project.updatedAt ?? 'not-synced',
+    };
+}
+
 async function main(): Promise<void> {
     console.log(`Syncing GitHub projects for ${GITHUB_USERNAME}...`);
-    const repos = await listUserRepos(GITHUB_USERNAME);
+    const repos = await listUserRepos();
     const excludedRepoSet = new Set(projectSyncConfig.excludedRepos ?? []);
+    const includedPrivateRepoSet = new Set(projectSyncConfig.includedPrivateRepos ?? []);
 
     const relevantRepos = repos
-        .filter((repo) => !repo.private && !repo.fork && !excludedRepoSet.has(repo.name))
+        .filter((repo) => (!repo.private || includedPrivateRepoSet.has(repo.name)) && !repo.fork && !excludedRepoSet.has(repo.name))
         .sort((left, right) => Date.parse(right.pushed_at) - Date.parse(left.pushed_at));
 
     const projectCards = await mapWithConcurrency(relevantRepos, 5, async (repo) => {
@@ -202,18 +312,32 @@ async function main(): Promise<void> {
         return toProjectCard(repo, languages);
     });
 
+    const manualProjectCards = (projectSyncConfig.manualProjects ?? []).map((project) => toManualProjectCard(project));
+    const mergedProjectCards = new Map<string, GithubProjectCard>();
+
+    for (const project of manualProjectCards) {
+        mergedProjectCards.set(project.name, project);
+    }
+
+    for (const project of projectCards) {
+        mergedProjectCards.set(project.name, project);
+    }
+
+    const finalProjectCards = [...mergedProjectCards.values()]
+        .sort((left, right) => Date.parse(right.pushedAt) - Date.parse(left.pushedAt));
+
     const output = {
         meta: {
             username: GITHUB_USERNAME,
             lastSyncedAt: new Date().toISOString(),
-            repoCount: projectCards.length,
+            repoCount: finalProjectCards.length,
         },
-        projects: projectCards,
+        projects: finalProjectCards,
     };
 
     await mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
     await writeFile(OUTPUT_PATH, `${JSON.stringify(output, null, 2)}\n`, 'utf8');
-    console.log(`Wrote ${projectCards.length} repositories to ${OUTPUT_PATH}`);
+    console.log(`Wrote ${finalProjectCards.length} repositories to ${OUTPUT_PATH}`);
 }
 
 main().catch((error) => {

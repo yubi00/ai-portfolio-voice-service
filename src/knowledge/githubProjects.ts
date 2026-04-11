@@ -15,10 +15,26 @@ export type GithubProjectCard = {
     stars: number;
     archived: boolean;
     featured: boolean;
+    signals: ProjectSignals;
+    initiative: ProjectInitiative | null;
     aliases: string[];
     keywords: string[];
     pushedAt: string;
     updatedAt: string;
+};
+
+type ProjectInitiative = {
+    name: string;
+    role: string;
+    summary: string;
+};
+
+type ProjectSignals = {
+    proudOf: number;
+    recommendedFirstLook: number;
+    aiShowcase: number;
+    orchestration: number;
+    backendShowcase: number;
 };
 
 type GithubProjectsFile = {
@@ -40,6 +56,28 @@ type ProjectSearchResult = GithubProjectCard & { score: number };
 const STOP_WORDS = new Set([
     'a', 'an', 'about', 'and', 'are', 'built', 'did', 'for', 'have', 'i', 'in', 'is', 'it', 'me', 'my', 'of', 'on', 'project', 'projects', 'tell', 'that', 'the', 'what', 'with', 'you', 'your',
 ]);
+
+type QueryIntent = {
+    proudOf: boolean;
+    recommendedFirstLook: boolean;
+    aiShowcase: boolean;
+    orchestration: boolean;
+    backendShowcase: boolean;
+};
+
+export function shouldUseGithubProjectContext(query: string): boolean {
+    const queryTerms = getMeaningfulQueryTerms(query);
+    const queryIntent = inferQueryIntent(query, queryTerms);
+    const exactMatches = getExactMatchProjects(query);
+
+    if (exactMatches.length > 0) return true;
+    if (queryIntent.proudOf || queryIntent.recommendedFirstLook) return false;
+    return true;
+}
+
+export function hasExplicitGithubProjectMatch(query: string): boolean {
+    return getExactMatchProjects(query).length > 0;
+}
 
 function normalizeGithubProjectsFile(input: unknown): GithubProjectsFile {
     const parsed = input as Partial<GithubProjectsFile> & LegacyGithubProjectsFile;
@@ -83,14 +121,39 @@ function getExactMatchProjects(query: string): GithubProjectCard[] {
     const normalizedQuery = normalizeText(query);
     if (!normalizedQuery) return [];
 
-    return projectCards.filter((project) => {
+    const exactMatches = projectCards.filter((project) => {
         const candidateValues = [project.name, project.fullName, ...project.aliases].map(normalizeText);
-        return candidateValues.some((candidate) => candidate.length > 0 && (
-            normalizedQuery === candidate
-            || normalizedQuery.includes(candidate)
-            || candidate.includes(normalizedQuery)
-        ));
+        return candidateValues.some((candidate) => candidate.length > 0 && normalizedQuery === candidate);
     });
+
+    if (exactMatches.length > 0) {
+        return exactMatches;
+    }
+
+    const partialMatches = projectCards
+        .map((project) => {
+            const candidateValues = [project.name, project.fullName, ...project.aliases].map(normalizeText);
+            const bestMatchLength = candidateValues.reduce((longest, candidate) => {
+                if (!candidate.length) return longest;
+                if (normalizedQuery.includes(candidate) || candidate.includes(normalizedQuery)) {
+                    return Math.max(longest, candidate.length);
+                }
+                return longest;
+            }, 0);
+
+            if (bestMatchLength === 0) return null;
+            return { project, bestMatchLength };
+        })
+        .filter((match): match is { project: GithubProjectCard; bestMatchLength: number } => match !== null);
+
+    if (partialMatches.length === 0) {
+        return [];
+    }
+
+    const maxMatchLength = Math.max(...partialMatches.map((match) => match.bestMatchLength));
+    return partialMatches
+        .filter((match) => match.bestMatchLength === maxMatchLength)
+        .map((match) => match.project);
 }
 
 function getMeaningfulQueryTerms(query: string): string[] {
@@ -99,25 +162,65 @@ function getMeaningfulQueryTerms(query: string): string[] {
         .filter((term) => term.length >= 2 && !STOP_WORDS.has(term));
 }
 
-function rankProjects(projects: ProjectSearchResult[], queryTerms: string[] = []): GithubProjectCard[] {
+function inferQueryIntent(query: string, queryTerms: string[]): QueryIntent {
+    const normalizedQuery = normalizeText(query);
+    const hasAny = (terms: string[]) => terms.some((term) => normalizedQuery.includes(term) || queryTerms.includes(term));
+
+    return {
+        proudOf: hasAny(['proud', 'favorite', 'favourite', 'best project', 'most proud']),
+        recommendedFirstLook: hasAny(['start with', 'look at first', 'should i look at', 'recommend', 'best project']),
+        aiShowcase: hasAny(['ai', 'llm', 'agent', 'agents', 'rag', 'openai', 'bedrock', 'voice']),
+        orchestration: hasAny(['orchestration', 'multi agent', 'multi-agent', 'agentic', 'workflow', 'planner', 'executor']),
+        backendShowcase: hasAny(['backend', 'architecture', 'serverless', 'api', 'graphql', 'distributed']),
+    };
+}
+
+function rankProjects(projects: ProjectSearchResult[], queryTerms: string[] = [], intent?: QueryIntent): GithubProjectCard[] {
     return [...projects]
         .sort((left, right) => {
             const leftKeywords = new Set([normalizeText(left.name), ...left.keywords]);
             const rightKeywords = new Set([normalizeText(right.name), ...right.keywords]);
             const leftQueryBoost = queryTerms.reduce((sum, term) => sum + (leftKeywords.has(term) ? 25 : 0), 0);
             const rightQueryBoost = queryTerms.reduce((sum, term) => sum + (rightKeywords.has(term) ? 25 : 0), 0);
-            const leftScore = left.score + leftQueryBoost + (left.featured ? 100 : 0) + Math.min(left.stars, 20);
-            const rightScore = right.score + rightQueryBoost + (right.featured ? 100 : 0) + Math.min(right.stars, 20);
+            const leftIntentBoost = getIntentBoost(left.signals, intent);
+            const rightIntentBoost = getIntentBoost(right.signals, intent);
+            const leftScore = left.score + leftQueryBoost + leftIntentBoost + (left.featured ? 100 : 0) + Math.min(left.stars, 20);
+            const rightScore = right.score + rightQueryBoost + rightIntentBoost + (right.featured ? 100 : 0) + Math.min(right.stars, 20);
             return rightScore - leftScore;
         })
         .map(({ score: _score, ...project }) => project);
 }
 
+function getIntentBoost(signals: ProjectSignals, intent?: QueryIntent): number {
+    if (!intent) return 0;
+
+    let boost = 0;
+    if (intent.proudOf) boost += signals.proudOf * 30;
+    if (intent.recommendedFirstLook) boost += signals.recommendedFirstLook * 25;
+    if (intent.aiShowcase) boost += signals.aiShowcase * 18;
+    if (intent.orchestration) boost += signals.orchestration * 20;
+    if (intent.backendShowcase) boost += signals.backendShowcase * 16;
+    return boost;
+}
+
+function getIntentSeedProjects(intent: QueryIntent): ProjectSearchResult[] {
+    const hasIntent = Object.values(intent).some(Boolean);
+    if (!hasIntent) return [];
+
+    return projectCards
+        .map((project) => ({
+            ...project,
+            score: getIntentBoost(project.signals, intent),
+        }))
+        .filter((project) => project.score > 0);
+}
+
 export function findRelevantGithubProjects(query: string, limit = 3): GithubProjectCard[] {
     const queryTerms = getMeaningfulQueryTerms(query);
+    const queryIntent = inferQueryIntent(query, queryTerms);
     const exactMatches = getExactMatchProjects(query);
     if (exactMatches.length > 0) {
-        return rankProjects(exactMatches.map((project) => ({ ...project, score: 1_000 })), queryTerms).slice(0, limit);
+        return rankProjects(exactMatches.map((project) => ({ ...project, score: 1_000 })), queryTerms, queryIntent).slice(0, limit);
     }
 
     if (!query.trim()) return [];
@@ -148,7 +251,15 @@ export function findRelevantGithubProjects(query: string, limit = 3): GithubProj
         })
         .filter((project): project is ProjectSearchResult => project !== null);
 
-    return rankProjects(matchedProjects, queryTerms).slice(0, limit);
+    const mergedProjects = new Map<string, ProjectSearchResult>();
+    for (const project of [...matchedProjects, ...getIntentSeedProjects(queryIntent)]) {
+        const existing = mergedProjects.get(project.id);
+        if (!existing || project.score > existing.score) {
+            mergedProjects.set(project.id, project);
+        }
+    }
+
+    return rankProjects([...mergedProjects.values()], queryTerms, queryIntent).slice(0, limit);
 }
 
 export function formatGithubProjectsForPrompt(projects: GithubProjectCard[]): string | null {
@@ -159,11 +270,13 @@ export function formatGithubProjectsForPrompt(projects: GithubProjectCard[]): st
         if (project.featured) extraSignals.push('featured project');
         if (project.homepage) extraSignals.push('live deployment available');
         if (project.archived) extraSignals.push('archived');
+        if (project.initiative) extraSignals.push(`part of ${project.initiative.name} (${project.initiative.role})`);
 
         const tech = Array.from(new Set([project.primaryLanguage, ...project.languages, ...project.topics].filter(Boolean))).slice(0, 6);
         const techText = tech.length > 0 ? ` Tech: ${tech.join(', ')}.` : '';
+        const initiativeText = project.initiative ? ` Initiative: ${project.initiative.name} — ${project.initiative.summary}.` : '';
         const signalsText = extraSignals.length > 0 ? ` Notes: ${extraSignals.join(', ')}.` : '';
-        return `${index + 1}. ${project.name}: ${project.summary}${techText}${signalsText}`;
+        return `${index + 1}. ${project.name}: ${project.summary}${initiativeText}${techText}${signalsText}`;
     });
 
     return `Use this GitHub project context only if it is relevant to the user's current question. Prefer exact project matches and do not invent repo details beyond this context.\n\n${lines.join('\n\n')}`;

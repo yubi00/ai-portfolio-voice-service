@@ -1,11 +1,13 @@
 import WebSocket from 'ws';
 import OpenAI, { toFile } from 'openai';
 import { config } from '../config';
-import { findRelevantGithubProjects, formatGithubProjectsForPrompt } from '../knowledge/githubProjects';
+import { formatFeaturedProjectsForPrompt } from '../knowledge/featuredProjects';
+import { formatProfileContextForPrompt } from '../knowledge/profileContext';
+import { findRelevantGithubProjects, formatGithubProjectsForPrompt, shouldUseGithubProjectContext } from '../knowledge/githubProjects';
 import { logger } from '../lib/logger';
 import { VoiceSession, VoiceSessionCallbacks } from './VoiceSession';
 
-const TURN_BASED_RESPONSE_STYLE = 'You are in turn-based voice mode. Keep replies concise and spoken: usually 1 to 2 short sentences, roughly under 45 words unless the user explicitly asks for more detail.';
+const TURN_BASED_RESPONSE_STYLE = 'You are in turn-based voice mode. Keep replies concise and spoken: usually 1 to 2 short sentences, roughly under 45 words unless the user explicitly asks for more detail. Sound conversational and off-the-cuff, like Yubi answering naturally in an interview, not like reading from a script or polished summary. Stay tightly grounded in the provided portfolio knowledge for this conversation. For broad project questions such as which project you are most proud of or what someone should look at first, answer from the curated Key Projects section rather than improvising. If the knowledge does not support a detail, say so plainly instead of guessing.';
 
 type ChatMessage = {
     role: 'user' | 'assistant';
@@ -356,7 +358,11 @@ export class TurnBasedVoiceSession implements VoiceSession {
     }
 
     private async generateAssistantText(userTranscript: string, responseId: string, signal: AbortSignal): Promise<string> {
-        const matchedProjects = findRelevantGithubProjects(userTranscript, 3);
+        const profileContext = formatProfileContextForPrompt(userTranscript);
+        const featuredProjectContext = formatFeaturedProjectsForPrompt(userTranscript);
+        const matchedProjects = shouldUseGithubProjectContext(userTranscript)
+            ? findRelevantGithubProjects(userTranscript, 3)
+            : [];
         const matchedProjectContext = formatGithubProjectsForPrompt(matchedProjects);
 
         logger.debug('Turn-based chat generation started', {
@@ -373,6 +379,8 @@ export class TurnBasedVoiceSession implements VoiceSession {
                 stream: true,
                 messages: [
                     { role: 'system', content: `${this.systemPrompt}\n\n${TURN_BASED_RESPONSE_STYLE}` },
+                    ...(profileContext ? [{ role: 'system' as const, content: profileContext }] : []),
+                    ...(featuredProjectContext ? [{ role: 'system' as const, content: featuredProjectContext }] : []),
                     ...(matchedProjectContext ? [{ role: 'system' as const, content: matchedProjectContext }] : []),
                     ...this.history.map((message) => ({ role: message.role, content: message.content })),
                     { role: 'user', content: userTranscript },

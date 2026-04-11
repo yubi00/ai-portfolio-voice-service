@@ -1,10 +1,135 @@
 {
   "meta": {
     "username": "yubi00",
-    "lastSyncedAt": "2026-04-11T17:06:27.687Z",
-    "repoCount": 81
+    "lastSyncedAt": "2026-04-11T17:58:20.209Z",
+    "repoCount": 83
   },
   "projects": [
+    {
+      "id": "yubi00/yubi-ai-portfolio-api",
+      "name": "yubi-ai-portfolio-api",
+      "fullName": "yubi00/yubi-ai-portfolio-api",
+      "description": "Backend API for the Yubi AI Portfolio Terminal ecosystem.",
+      "summary": "yubi-ai-portfolio-api: Backend API for the Yubi AI Portfolio Terminal ecosystem. Focused on portfolio orchestration, query handling, and backend service integration.",
+      "url": "https://github.com/yubi00/yubi-ai-portfolio-api",
+      "homepage": null,
+      "primaryLanguage": "TypeScript",
+      "languages": [
+        "TypeScript"
+      ],
+      "topics": [
+        "portfolio",
+        "api",
+        "backend",
+        "orchestration"
+      ],
+      "stars": 0,
+      "archived": false,
+      "featured": false,
+      "signals": {
+        "proudOf": 9,
+        "recommendedFirstLook": 8,
+        "aiShowcase": 9,
+        "orchestration": 9,
+        "backendShowcase": 9
+      },
+      "initiative": {
+        "name": "Yubi AI Portfolio Terminal",
+        "role": "backend portfolio API",
+        "summary": "API layer that orchestrates the portfolio experience and query handling."
+      },
+      "aliases": [
+        "portfolio api",
+        "backend api",
+        "portfolio backend",
+        "yubi-portfolio-api",
+        "yubi ai portfolio terminal"
+      ],
+      "keywords": [
+        "portfolio",
+        "api",
+        "backend",
+        "orchestration",
+        "typescript",
+        "portfolio api",
+        "backend api",
+        "portfolio backend",
+        "yubi portfolio api",
+        "yubi ai portfolio terminal",
+        "for",
+        "the",
+        "yubi",
+        "terminal",
+        "ecosystem",
+        "query handling",
+        "portfolio orchestration"
+      ],
+      "pushedAt": "not-synced",
+      "updatedAt": "not-synced"
+    },
+    {
+      "id": "yubi00/yubi-github-mcp-server",
+      "name": "yubi-github-mcp-server",
+      "fullName": "yubi00/yubi-github-mcp-server",
+      "description": "GitHub MCP server for repo-aware retrieval inside the Yubi AI Portfolio Terminal ecosystem.",
+      "summary": "yubi-github-mcp-server: GitHub MCP server for repo-aware retrieval inside the Yubi AI Portfolio Terminal ecosystem. Focused on repository lookup, MCP orchestration, and portfolio project context retrieval.",
+      "url": "https://github.com/yubi00/yubi-github-mcp-server",
+      "homepage": null,
+      "primaryLanguage": "TypeScript",
+      "languages": [
+        "TypeScript"
+      ],
+      "topics": [
+        "mcp",
+        "github",
+        "retrieval",
+        "orchestration"
+      ],
+      "stars": 0,
+      "archived": false,
+      "featured": false,
+      "signals": {
+        "proudOf": 9,
+        "recommendedFirstLook": 7,
+        "aiShowcase": 9,
+        "orchestration": 10,
+        "backendShowcase": 8
+      },
+      "initiative": {
+        "name": "Yubi AI Portfolio Terminal",
+        "role": "GitHub MCP retrieval server",
+        "summary": "Repo-aware MCP server used for project retrieval and orchestration."
+      },
+      "aliases": [
+        "github mcp server",
+        "portfolio mcp server",
+        "repo retrieval server",
+        "yubi ai portfolio terminal"
+      ],
+      "keywords": [
+        "mcp",
+        "github",
+        "retrieval",
+        "orchestration",
+        "typescript",
+        "github mcp server",
+        "portfolio mcp server",
+        "repo retrieval server",
+        "yubi ai portfolio terminal",
+        "server",
+        "for",
+        "repo aware",
+        "inside",
+        "the",
+        "yubi",
+        "portfolio",
+        "terminal",
+        "ecosystem",
+        "repository lookup"
+      ],
+      "pushedAt": "not-synced",
+      "updatedAt": "not-synced"
+    },
     {
       "id": "yubi00/ai-portfolio-voice-service",
       "name": "ai-portfolio-voice-service",
@@ -26,10 +151,23 @@
       "stars": 0,
       "archived": false,
       "featured": true,
+      "signals": {
+        "proudOf": 10,
+        "recommendedFirstLook": 10,
+        "aiShowcase": 10,
+        "orchestration": 9,
+        "backendShowcase": 8
+      },
+      "initiative": {
+        "name": "Yubi AI Portfolio Terminal",
+        "role": "voice service",
+        "summary": "Real-time voice interface for the broader AI portfolio platform."
+      },
       "aliases": [
         "voice portfolio",
         "voice service",
-        "portfolio voice service"
+        "portfolio voice service",
+        "yubi ai portfolio terminal"
       ],
       "keywords": [
         "audio streaming",
@@ -40,6 +178,7 @@
         "voice portfolio",
         "voice service",
         "portfolio voice service",
+        "yubi ai portfolio terminal",
         "audio",
         "conversation",
         "with",
@@ -64,8 +203,8 @@
         "avatar based",
         "interaction"
       ],
-      "pushedAt": "2026-04-11T16:43:16Z",
-      "updatedAt": "2026-04-11T16:43:22Z"
+      "pushedAt": "2026-04-11T17:41:53Z",
+      "updatedAt": "2026-04-11T17:42:00Z"
     },
     {
       "id": "yubi00/claude-agentic-rag-pipeline",
@@ -83,6 +222,14 @@
       "stars": 0,
       "archived": false,
       "featured": true,
+      "signals": {
+        "proudOf": 8,
+        "recommendedFirstLook": 7,
+        "aiShowcase": 10,
+        "orchestration": 10,
+        "backendShowcase": 7
+      },
+      "initiative": null,
       "aliases": [
         "rag pipeline",
         "agentic rag pipeline",
@@ -142,6 +289,14 @@
       "stars": 0,
       "archived": false,
       "featured": true,
+      "signals": {
+        "proudOf": 6,
+        "recommendedFirstLook": 7,
+        "aiShowcase": 8,
+        "orchestration": 4,
+        "backendShowcase": 5
+      },
+      "initiative": null,
       "aliases": [
         "match cast",
         "epl pundit app",
@@ -198,6 +353,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -228,6 +391,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "python",
@@ -261,6 +432,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -288,6 +467,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -325,6 +512,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript"
@@ -350,6 +545,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -381,6 +584,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -416,6 +627,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -443,6 +662,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -491,6 +718,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -522,6 +757,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -567,6 +810,14 @@
       "stars": 1,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -609,6 +860,14 @@
       "stars": 0,
       "archived": false,
       "featured": true,
+      "signals": {
+        "proudOf": 3,
+        "recommendedFirstLook": 3,
+        "aiShowcase": 1,
+        "orchestration": 1,
+        "backendShowcase": 4
+      },
+      "initiative": null,
       "aliases": [
         "super hero app",
         "superhero search app"
@@ -663,17 +922,33 @@
       "stars": 0,
       "archived": false,
       "featured": true,
+      "signals": {
+        "proudOf": 10,
+        "recommendedFirstLook": 10,
+        "aiShowcase": 9,
+        "orchestration": 8,
+        "backendShowcase": 6
+      },
+      "initiative": {
+        "name": "Yubi AI Portfolio Terminal",
+        "role": "main user-facing portfolio interface",
+        "summary": "The primary frontend experience that visitors interact with."
+      },
       "aliases": [
-        "old portfolio",
-        "mern portfolio"
+        "portfolio app",
+        "main portfolio interface",
+        "portfolio frontend",
+        "yubi ai portfolio terminal"
       ],
       "keywords": [
         "javascript",
         "scss",
         "html",
         "shell",
-        "old portfolio",
-        "mern portfolio",
+        "portfolio app",
+        "main portfolio interface",
+        "portfolio frontend",
+        "yubi ai portfolio terminal",
         "mern",
         "stack",
         "based",
@@ -703,6 +978,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -730,6 +1013,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -774,6 +1065,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -816,6 +1115,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -844,6 +1151,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -889,6 +1204,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -940,6 +1263,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -971,6 +1302,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1001,6 +1340,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1037,6 +1384,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1076,6 +1431,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1103,6 +1466,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1137,6 +1508,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1169,6 +1548,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript"
@@ -1194,6 +1581,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1229,6 +1624,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1260,6 +1663,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "created",
@@ -1287,6 +1698,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1328,6 +1747,14 @@
       "stars": 0,
       "archived": false,
       "featured": true,
+      "signals": {
+        "proudOf": 3,
+        "recommendedFirstLook": 4,
+        "aiShowcase": 1,
+        "orchestration": 1,
+        "backendShowcase": 5
+      },
+      "initiative": null,
       "aliases": [
         "graphql crud",
         "perng graphql crud"
@@ -1380,6 +1807,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1409,6 +1844,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1449,6 +1892,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "dark theme",
@@ -1494,6 +1945,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1520,6 +1979,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1562,6 +2029,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1589,6 +2064,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1633,6 +2116,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "csv files",
@@ -1682,6 +2173,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1718,6 +2217,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -1746,6 +2253,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -1785,6 +2300,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "html",
@@ -1825,6 +2348,14 @@
       "stars": 0,
       "archived": false,
       "featured": true,
+      "signals": {
+        "proudOf": 4,
+        "recommendedFirstLook": 5,
+        "aiShowcase": 1,
+        "orchestration": 3,
+        "backendShowcase": 8
+      },
+      "initiative": null,
       "aliases": [
         "ticketing microservice app",
         "microservice ticketing app"
@@ -1879,6 +2410,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -1908,6 +2447,14 @@
       "stars": 0,
       "archived": false,
       "featured": true,
+      "signals": {
+        "proudOf": 4,
+        "recommendedFirstLook": 4,
+        "aiShowcase": 1,
+        "orchestration": 1,
+        "backendShowcase": 7
+      },
+      "initiative": null,
       "aliases": [
         "csv processing api",
         "publift challenge"
@@ -1956,6 +2503,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "c",
@@ -1985,6 +2540,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2024,6 +2587,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2072,6 +2643,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -2109,6 +2688,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -2146,6 +2733,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "html",
@@ -2184,6 +2779,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2211,6 +2814,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2245,6 +2856,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -2280,6 +2899,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -2321,6 +2948,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2364,6 +2999,14 @@
       "stars": 1,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2409,6 +3052,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -2447,6 +3098,14 @@
       "stars": 1,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2490,6 +3149,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript"
@@ -2513,6 +3180,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2547,6 +3222,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2595,6 +3278,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2635,6 +3326,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "vue",
@@ -2683,6 +3382,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2720,6 +3427,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "vue",
@@ -2754,6 +3469,14 @@
       "stars": 5,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2791,6 +3514,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "typescript",
@@ -2819,6 +3550,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [],
       "pushedAt": "2018-02-25T02:44:33Z",
@@ -2843,6 +3582,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "java",
@@ -2878,6 +3625,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "c"
@@ -2903,6 +3658,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "javascript",
@@ -2928,6 +3691,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "php"
@@ -2954,6 +3725,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "php",
@@ -2994,6 +3773,14 @@
       "stars": 0,
       "archived": false,
       "featured": false,
+      "signals": {
+        "proudOf": 0,
+        "recommendedFirstLook": 0,
+        "aiShowcase": 0,
+        "orchestration": 0,
+        "backendShowcase": 0
+      },
+      "initiative": null,
       "aliases": [],
       "keywords": [
         "php"

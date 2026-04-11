@@ -109,6 +109,9 @@ These apply to every line written, every phase, no exceptions:
 - [x] Inject matched project cards into turn-based responses on a per-turn basis
 - [x] Keep a clear fallback when no confident GitHub project match is found
 - [x] Port the same retrieval path into Realtime mode using manual `response.create` after transcription completes
+- [x] Add curated featured-project routing for broad flagship questions so vague prompts like "the project" stay grounded
+- [x] Add curated profile routing for identity/background questions so voice answers introduce Yubi correctly
+- [x] Tune voice persona prompts so answers sound interview-like, natural, and unscripted instead of scripted summaries
 - [x] Test: ask about a featured project — confirm the answer stays concise and grounded
 - [x] Test: ask about a non-featured GitHub repo by name — confirm the assistant finds it from local synced data
 - [x] Test: ask broad stack questions like "what React projects have you built?" — confirm only the most relevant repos are surfaced
@@ -207,4 +210,4 @@ These apply to every line written, every phase, no exceptions:
 
 > Update this line as you progress.
 
-**Currently working on: Phase 4B — Local GitHub Project Retrieval**
+**Currently working on: Phase 4B follow-up — Realtime validation and final cleanup**

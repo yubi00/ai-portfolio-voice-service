@@ -13,7 +13,27 @@
     "ai-portfolio-voice-service": [
       "voice portfolio",
       "voice service",
-      "portfolio voice service"
+      "portfolio voice service",
+      "yubi ai portfolio terminal"
+    ],
+    "yubi-portfolio": [
+      "portfolio app",
+      "main portfolio interface",
+      "portfolio frontend",
+      "yubi ai portfolio terminal"
+    ],
+    "yubi-ai-portfolio-api": [
+      "portfolio api",
+      "backend api",
+      "portfolio backend",
+      "yubi-portfolio-api",
+      "yubi ai portfolio terminal"
+    ],
+    "yubi-github-mcp-server": [
+      "github mcp server",
+      "portfolio mcp server",
+      "repo retrieval server",
+      "yubi ai portfolio terminal"
     ],
     "claude-agentic-rag-pipeline": [
       "rag pipeline",
@@ -24,10 +44,6 @@
       "match cast",
       "epl pundit app",
       "football audio app"
-    ],
-    "yubi-portfolio": [
-      "old portfolio",
-      "mern portfolio"
     ],
     "ticketing-app": [
       "ticketing microservice app",
@@ -46,5 +62,151 @@
       "superhero search app"
     ]
   },
+  "signals": {
+    "ai-portfolio-voice-service": {
+      "proudOf": 10,
+      "recommendedFirstLook": 10,
+      "aiShowcase": 10,
+      "orchestration": 9,
+      "backendShowcase": 8
+    },
+    "yubi-portfolio": {
+      "proudOf": 10,
+      "recommendedFirstLook": 10,
+      "aiShowcase": 9,
+      "orchestration": 8,
+      "backendShowcase": 6
+    },
+    "yubi-ai-portfolio-api": {
+      "proudOf": 9,
+      "recommendedFirstLook": 8,
+      "aiShowcase": 9,
+      "orchestration": 9,
+      "backendShowcase": 9
+    },
+    "yubi-github-mcp-server": {
+      "proudOf": 9,
+      "recommendedFirstLook": 7,
+      "aiShowcase": 9,
+      "orchestration": 10,
+      "backendShowcase": 8
+    },
+    "claude-agentic-rag-pipeline": {
+      "proudOf": 8,
+      "recommendedFirstLook": 7,
+      "aiShowcase": 10,
+      "orchestration": 10,
+      "backendShowcase": 7
+    },
+    "matchcast": {
+      "proudOf": 6,
+      "recommendedFirstLook": 7,
+      "aiShowcase": 8,
+      "orchestration": 4,
+      "backendShowcase": 5
+    },
+    "ticketing-app": {
+      "proudOf": 4,
+      "recommendedFirstLook": 5,
+      "aiShowcase": 1,
+      "orchestration": 3,
+      "backendShowcase": 8
+    },
+    "publift-typescript": {
+      "proudOf": 4,
+      "recommendedFirstLook": 4,
+      "aiShowcase": 1,
+      "orchestration": 1,
+      "backendShowcase": 7
+    },
+    "graphql-CRUD": {
+      "proudOf": 3,
+      "recommendedFirstLook": 4,
+      "aiShowcase": 1,
+      "orchestration": 1,
+      "backendShowcase": 5
+    },
+    "superhero-app": {
+      "proudOf": 3,
+      "recommendedFirstLook": 3,
+      "aiShowcase": 1,
+      "orchestration": 1,
+      "backendShowcase": 4
+    }
+  },
+  "initiativeGroups": {
+    "ai-portfolio-voice-service": {
+      "name": "Yubi AI Portfolio Terminal",
+      "role": "voice service",
+      "summary": "Real-time voice interface for the broader AI portfolio platform."
+    },
+    "yubi-portfolio": {
+      "name": "Yubi AI Portfolio Terminal",
+      "role": "main user-facing portfolio interface",
+      "summary": "The primary frontend experience that visitors interact with."
+    },
+    "yubi-ai-portfolio-api": {
+      "name": "Yubi AI Portfolio Terminal",
+      "role": "backend portfolio API",
+      "summary": "API layer that orchestrates the portfolio experience and query handling."
+    },
+    "yubi-github-mcp-server": {
+      "name": "Yubi AI Portfolio Terminal",
+      "role": "GitHub MCP retrieval server",
+      "summary": "Repo-aware MCP server used for project retrieval and orchestration."
+    }
+  },
+  "includedPrivateRepos": [
+    "yubi-ai-portfolio-api",
+    "yubi-github-mcp-server"
+  ],
+  "manualProjects": [
+    {
+      "name": "yubi-ai-portfolio-api",
+      "fullName": "yubi00/yubi-ai-portfolio-api",
+      "description": "Backend API for the Yubi AI Portfolio Terminal ecosystem.",
+      "summary": "yubi-ai-portfolio-api: Backend API for the Yubi AI Portfolio Terminal ecosystem. Focused on portfolio orchestration, query handling, and backend service integration.",
+      "url": "https://github.com/yubi00/yubi-ai-portfolio-api",
+      "primaryLanguage": "TypeScript",
+      "languages": [
+        "TypeScript"
+      ],
+      "topics": [
+        "portfolio",
+        "api",
+        "backend",
+        "orchestration"
+      ],
+      "keywords": [
+        "portfolio api",
+        "backend api",
+        "query handling",
+        "portfolio orchestration"
+      ]
+    },
+    {
+      "name": "yubi-github-mcp-server",
+      "fullName": "yubi00/yubi-github-mcp-server",
+      "description": "GitHub MCP server for repo-aware retrieval inside the Yubi AI Portfolio Terminal ecosystem.",
+      "summary": "yubi-github-mcp-server: GitHub MCP server for repo-aware retrieval inside the Yubi AI Portfolio Terminal ecosystem. Focused on repository lookup, MCP orchestration, and portfolio project context retrieval.",
+      "url": "https://github.com/yubi00/yubi-github-mcp-server",
+      "primaryLanguage": "TypeScript",
+      "languages": [
+        "TypeScript"
+      ],
+      "topics": [
+        "mcp",
+        "github",
+        "retrieval",
+        "orchestration"
+      ],
+      "keywords": [
+        "github mcp server",
+        "repo retrieval server",
+        "portfolio mcp server",
+        "repository lookup"
+      ]
+    }
+  ],
   "excludedRepos": []
 }

@@ -1,6 +1,8 @@
 import WebSocket from 'ws';
 import { config } from '../config';
-import { findRelevantGithubProjects, formatGithubProjectsForPrompt } from '../knowledge/githubProjects';
+import { formatFeaturedProjectsForPrompt } from '../knowledge/featuredProjects';
+import { formatProfileContextForPrompt } from '../knowledge/profileContext';
+import { findRelevantGithubProjects, formatGithubProjectsForPrompt, shouldUseGithubProjectContext } from '../knowledge/githubProjects';
 import { logger } from '../lib/logger';
 
 // Single responsibility: manage one upstream WebSocket session with OpenAI Realtime API.
@@ -9,6 +11,9 @@ const REALTIME_RESPONSE_STYLE = [
     'Follow the existing session instructions and stay in the established Yubi persona.',
     'Always respond in English unless the user explicitly asks for another language.',
     'Keep voice responses natural and concise. Usually answer in two to four spoken sentences unless the user asks for more detail.',
+    'Sound conversational and unscripted, like Yubi answering naturally in an interview, not like reading from a script, book, or polished product summary.',
+    'Stay tightly grounded in the provided portfolio knowledge for this conversation. For broad project questions such as which project you are most proud of or what someone should look at first, answer from the curated Key Projects section rather than improvising.',
+    'If the provided knowledge does not support a detail, say that directly instead of guessing.',
 ].join(' ');
 
 export class OpenAIRealtimeSession {
@@ -158,26 +163,34 @@ export class OpenAIRealtimeSession {
             this.handledTranscriptItemIds.add(itemId);
         }
 
-        const matchedProjects = findRelevantGithubProjects(trimmedTranscript, 3);
+        const profileContext = formatProfileContextForPrompt(trimmedTranscript);
+        const featuredProjectContext = formatFeaturedProjectsForPrompt(trimmedTranscript);
+        const matchedProjects = shouldUseGithubProjectContext(trimmedTranscript)
+            ? findRelevantGithubProjects(trimmedTranscript, 3)
+            : [];
         const matchedProjectContext = formatGithubProjectsForPrompt(matchedProjects);
 
         logger.debug('Creating realtime response with per-turn project context', {
             sessionId: this.sessionId,
             transcriptChars: trimmedTranscript.length,
+            usedProfileContext: Boolean(profileContext),
+            usedFeaturedProjectsContext: Boolean(featuredProjectContext),
             matchedProjects: matchedProjects.map((project) => project.name),
         });
 
-        this.sendResponseCreate(matchedProjectContext);
+        this.sendResponseCreate(profileContext, featuredProjectContext, matchedProjectContext);
     }
 
-    private sendResponseCreate(projectContext: string | null): void {
+    private sendResponseCreate(profileContext: string | null, featuredProjectContext: string | null, projectContext: string | null): void {
         if (this.upstream.readyState !== WebSocket.OPEN) return;
+
+        const contextParts = [profileContext, featuredProjectContext, projectContext].filter((value): value is string => Boolean(value));
 
         const responseCreate = {
             type: 'response.create',
             response: {
-                instructions: projectContext
-                    ? `${REALTIME_RESPONSE_STYLE}\n\n${projectContext}`
+                instructions: contextParts.length > 0
+                    ? `${REALTIME_RESPONSE_STYLE}\n\n${contextParts.join('\n\n')}`
                     : REALTIME_RESPONSE_STYLE,
             },
         };

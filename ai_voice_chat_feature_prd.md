@@ -302,6 +302,114 @@ Note over VoiceService,Knowledge: Provider-backed prompt injection before sessio
 }
 ```
 
+### Current Backend Reality
+
+The backend implementation now differs slightly from the original idealised design above. The frontend repo should treat the following as the source of truth:
+
+- Browser connects to the Node.js voice backend over a single WebSocket endpoint at `/ws`
+- Browser can also use `/health` for a lightweight availability check
+- The backend supports two modes selected by server config, not by the browser:
+  - `realtime`
+  - `turn-based`
+- Both modes are intended to converge on one frontend-facing contract, but today the Realtime path still forwards mostly OpenAI-shaped events while the turn-based path emits compatible equivalents
+- Authentication is not implemented yet; origin allowlisting and backend session caps are the only current admission controls
+
+### Frontend Integration Contract (Current)
+
+#### Backend URL Assumptions
+
+- HTTP health check: `GET /health`
+- WebSocket endpoint: `ws(s)://<voice-service-host>/ws`
+- Frontend project should expose its own env var such as `VITE_VOICE_WS_URL` or derive the URL from a backend base URL
+
+#### Audio Input Requirements
+
+- Browser captures microphone audio with `getUserMedia`
+- Browser streams mono PCM16 audio at 24 kHz to the backend
+- Audio chunks are sent as base64 inside JSON messages
+- The backend expects `input_audio_buffer.append` messages during active capture
+
+Client message shape:
+
+```json
+{
+  "type": "input_audio_buffer.append",
+  "audio": "<base64 pcm16 mono 24khz>"
+}
+```
+
+Interrupt / cancel message shape:
+
+```json
+{
+  "type": "response.cancel"
+}
+```
+
+#### Server Events The Frontend Must Handle
+
+The frontend implementation should be prepared for the following server event types today:
+
+- `session.created`
+- `session.updated`
+- `session.closed`
+- `relay.error`
+- `error`
+- `response.created`
+- `response.audio.delta`
+- `response.audio_transcript.delta`
+- `response.audio_transcript.done`
+- `response.done`
+- `response.cancelled`
+- `conversation.item.input_audio_transcription.delta`
+- `conversation.item.input_audio_transcription.completed`
+- `input_audio_buffer.speech_started`
+- `input_audio_buffer.speech_stopped`
+
+#### Event Semantics The Frontend Should Assume
+
+- `session.created`: connection accepted; can include session id and active mode
+- `session.updated`: backend session configuration is ready
+- `response.created`: assistant has started a new response turn
+- `response.audio.delta`: base64 PCM audio chunk to queue for playback
+- `response.audio_transcript.delta`: assistant transcript chunk to append live
+- `response.audio_transcript.done`: assistant transcript is complete, but queued audio may still still be draining locally
+- `conversation.item.input_audio_transcription.delta`: optional live user transcript chunk
+- `conversation.item.input_audio_transcription.completed`: final user transcript for the turn
+- `response.done`: backend has finished emitting the response; frontend should still let queued audio finish naturally
+- `response.cancelled`: current assistant turn was interrupted or cancelled; frontend should stop queued playback immediately
+- `input_audio_buffer.speech_started`: authoritative speech-start signal from backend / provider VAD
+- `session.closed`: terminal state for the current session; frontend should reset UI and reconnect only via explicit user action or deliberate reconnect logic
+
+#### Browser Responsibilities
+
+The frontend repo should own:
+
+- microphone permission flow
+- AudioContext lifecycle and unlock behavior
+- PCM16 resampling / encoding to 24 kHz mono
+- outbound audio chunk streaming cadence
+- inbound audio queueing and gap-free playback
+- transcript rendering for user and assistant
+- local interruption handling while assistant audio is playing
+- user-visible connection / error / retry states
+
+#### Important Playback Detail
+
+The frontend must not assume that `response.done` means audio playback has audibly finished. The backend may be done sending chunks while the browser still has queued audio scheduled for playback. The UI should track actual local playback drain separately from backend response completion.
+
+#### Current Compatibility Note
+
+There is a future semantic event contract defined conceptually as:
+
+- `voice.state`
+- `voice.transcript.delta`
+- `voice.transcript.done`
+- `voice.error`
+- `voice.session.closed`
+
+But the frontend should not depend on those semantic event names yet. For the current implementation, it should code against the concrete event list above.
+
 ---
 
 ## 10. Response Strategy
@@ -380,7 +488,33 @@ With OpenAI Realtime API, STT, LLM, and TTS are handled in a **single streaming 
 
 ---
 
-## 15. Implementation Phases
+## 15. Frontend Handoff Notes
+
+This PRD is intended to be copied into the separate frontend repo as implementation context. For that repo, the key truths are:
+
+- the backend voice service already exists and is independently runnable
+- the separate frontend repo does not need to implement provider logic, retrieval logic, or OpenAI session orchestration
+- the frontend repo only needs to integrate with the backend WebSocket contract and produce a polished product UI around it
+- the dev `public/test.html` page in the backend repo is the best reference for protocol behavior, transcript timing, and audio playback expectations
+
+Recommended frontend implementation order:
+
+1. Connect to `/ws` and show connection status
+2. Capture mic and stream PCM16 chunks
+3. Render live user and assistant transcripts
+4. Queue and play streamed assistant audio
+5. Implement interruption UX and cancellation behavior
+6. Polish UI states, mobile behavior, and error recovery
+
+Recommended frontend environment inputs:
+
+- backend HTTP base URL
+- backend WebSocket URL
+- optional feature flag to enable voice in non-production environments first
+
+---
+
+## 16. Implementation Phases
 
 ### Phase 1: Basic Audio Chat
 - Relay scaffold, browser audio capture/playback, realtime session setup
@@ -413,7 +547,7 @@ With OpenAI Realtime API, STT, LLM, and TTS are handled in a **single streaming 
 
 ---
 
-## 16. Risks & Trade-offs
+## 17. Risks & Trade-offs
 
 ### Risks
 - **OpenAI Realtime API cost** — priced per audio token, can add up with long sessions
@@ -431,7 +565,7 @@ With OpenAI Realtime API, STT, LLM, and TTS are handled in a **single streaming 
 
 ---
 
-## 17. Future Enhancements
+## 18. Future Enhancements
 
 - Avatar-based video chat
 - Emotion-aware responses
@@ -440,7 +574,7 @@ With OpenAI Realtime API, STT, LLM, and TTS are handled in a **single streaming 
 
 ---
 
-## 18. Summary
+## 19. Summary
 
 The system introduces a dedicated **voice-first architecture** that prioritizes speed and conversational flow, while leveraging existing systems for deeper knowledge when required.
 

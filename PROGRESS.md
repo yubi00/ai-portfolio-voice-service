@@ -170,6 +170,10 @@ These apply to every line written, every phase, no exceptions:
 - [ ] Show visual indicator (pulsing mic, waveform, or spinner) per state
 - [ ] Handle connection errors with user-facing message
 - [ ] Ensure voice mode and terminal mode are independent (no shared state clashes)
+- [ ] Use the real backend WebSocket contract from the PRD instead of inventing a frontend-only abstraction prematurely
+- [ ] Support current concrete event names first; semantic `voice.*` event normalization can come later
+- [ ] Handle queued-audio drain separately from `response.done` so the UI does not mark playback complete too early
+- [ ] Add frontend env configuration for backend HTTP / WS URLs
 - [ ] Test on desktop Chrome and Firefox
 - [ ] Test on mobile Safari (check AudioContext unlock requirement on iOS)
 
@@ -213,4 +217,33 @@ These apply to every line written, every phase, no exceptions:
 
 > Update this line as you progress.
 
-**Currently working on: Phase 4B follow-up — Realtime validation and final cleanup**
+**Currently working on: Phase 7 prep — frontend repo handoff and real UI integration**
+
+---
+
+## Frontend Repo Handoff Context
+
+This repo now contains enough backend-side context to start the separate frontend repo safely. The frontend repo should be given at least:
+
+- `ai_voice_chat_feature_prd.md`
+- `PROGRESS.md`
+
+What those docs now establish:
+
+- backend exists already and owns OpenAI orchestration
+- browser connects only to the backend voice service, not to OpenAI directly
+- current WebSocket contract is concrete and should be implemented as-is first
+- Realtime and turn-based are backend-selected modes and should not require separate frontend implementations
+- frontend still needs to treat transcript completion and local audio drain as different lifecycle points
+
+Backend facts the frontend repo should assume right now:
+
+- WebSocket endpoint: `/ws`
+- Health endpoint: `/health`
+- Browser must send `input_audio_buffer.append` and `response.cancel`
+- Browser must handle session, transcript, audio, cancellation, and error events listed in the PRD
+- Auth is not implemented yet, so frontend integration can proceed before production auth work starts
+
+When Phase 7 starts in the frontend repo, the first success criterion should be:
+
+- real portfolio UI can connect to the backend, stream mic audio, render transcripts, play assistant audio, and handle interruption cleanly

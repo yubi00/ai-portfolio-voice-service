@@ -89,17 +89,28 @@ export class TurnBasedVoiceSession implements VoiceSession {
                 }
                 break;
             case 'response.cancel':
+                this.resetInactivity('response_cancel');
                 this.cancelActiveResponse();
                 break;
             default:
-                this.resetInactivity();
+                this.resetInactivity(`client_event:${parsed.type ?? 'unknown'}`);
                 break;
         }
     }
 
-    resetInactivity(): void {
+    resetInactivity(reason = 'activity'): void {
         clearTimeout(this.inactivityTimer);
         this.inactivityTimer = this.startInactivityTimer();
+        logger.debug('Turn-based inactivity timer reset', {
+            sessionId: this.sessionId,
+            reason,
+            timeoutMs: config.costGuards.inactivityTimeoutMs,
+            speechActive: this.speechActive,
+            processingTurn: this.processingTurn,
+            queuedAudioChunks: this.queuedAudioChunks.length,
+            bufferedPcmChunks: this.pcmChunks.length,
+            activeResponseId: this.activeResponseId,
+        });
     }
 
     close(reason = 'normal'): void {
@@ -133,7 +144,6 @@ export class TurnBasedVoiceSession implements VoiceSession {
     }
 
     private async handleAudioAppend(base64Audio: string): Promise<void> {
-        this.resetInactivity();
         const chunk = Buffer.from(base64Audio, 'base64');
         if (this.processingTurn) {
             this.handleQueuedAudioDuringProcessing(chunk);
@@ -154,6 +164,7 @@ export class TurnBasedVoiceSession implements VoiceSession {
         this.queuedAudioChunks.push(chunk);
 
         if (isSpeech && !this.speechActive) {
+            this.resetInactivity('queued_speech_started');
             this.speechActive = true;
             logger.debug('Turn-based interruption speech started during active turn', {
                 sessionId: this.sessionId,
@@ -171,6 +182,7 @@ export class TurnBasedVoiceSession implements VoiceSession {
         const isSpeech = rms >= config.voice.turnBased.silenceThreshold;
 
         if (isSpeech) {
+            this.resetInactivity('speech_audio_append');
             if (!this.speechActive) {
                 this.speechActive = true;
                 logger.debug('Turn-based speech started', {
@@ -248,6 +260,7 @@ export class TurnBasedVoiceSession implements VoiceSession {
     private async processTurn(pcmAudio: Buffer): Promise<void> {
         this.processingTurn = true;
         this.abortController = new AbortController();
+        this.resetInactivity('turn_processing_started');
 
         logger.info('Turn-based turn processing started', {
             sessionId: this.sessionId,
@@ -266,6 +279,7 @@ export class TurnBasedVoiceSession implements VoiceSession {
                 transcriptChars: transcript.length,
             });
 
+            this.resetInactivity('transcription_completed');
             this.emit({ type: 'conversation.item.input_audio_transcription.completed', transcript });
 
             const responseId = this.nextResponseId();
@@ -275,6 +289,7 @@ export class TurnBasedVoiceSession implements VoiceSession {
                 responseId,
                 historyMessages: this.history.length,
             });
+            this.resetInactivity('response_created');
             this.emit({ type: 'response.created', response: { id: responseId } });
 
             const assistantText = await this.generateAssistantText(transcript, responseId, this.abortController.signal);
@@ -327,7 +342,7 @@ export class TurnBasedVoiceSession implements VoiceSession {
         } finally {
             this.processingTurn = false;
             this.abortController = null;
-            this.resetInactivity();
+            this.resetInactivity('turn_processing_finished');
             this.scheduleQueuedAudioFlush();
         }
     }
@@ -413,6 +428,7 @@ export class TurnBasedVoiceSession implements VoiceSession {
             model: config.voice.turnBased.ttsModel,
             chars: text.length,
         });
+        this.resetInactivity('tts_started');
         const response = await this.client.audio.speech.create(
             {
                 model: config.voice.turnBased.ttsModel,
@@ -434,6 +450,7 @@ export class TurnBasedVoiceSession implements VoiceSession {
         for (let offset = 0; offset < pcmAudio.length; offset += chunkSize) {
             if (signal.aborted || this.activeResponseId !== responseId) break;
             const chunk = pcmAudio.subarray(offset, Math.min(offset + chunkSize, pcmAudio.length));
+            this.resetInactivity('tts_audio_chunk_sent');
             this.emit({
                 type: 'response.audio.delta',
                 response_id: responseId,

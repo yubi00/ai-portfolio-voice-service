@@ -42,6 +42,7 @@
   <div class="row">
     <button id="btnConnect">Connect</button>
     <button id="btnDisconnect" disabled>Disconnect</button>
+    <input id="accessToken" type="password" placeholder="Optional access token" style="flex:1;min-width:220px;background:#111;border:1px solid #444;color:#e0e0e0;padding:0.45rem 0.7rem;font-family:monospace;" />
     <span id="status">Disconnected</span>
     <span id="modeBadge">Unknown</span>
   </div>
@@ -61,7 +62,7 @@
 
   <script>
     // ─── Constants ──────────────────────────────────────────────────────────────
-    const WS_URL = 'ws://localhost:3001/ws';
+    const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
     const TARGET_SAMPLE_RATE = 24000;  // OpenAI Realtime API requires 24kHz PCM16
     const BUFFER_SIZE = 4096;          // ScriptProcessorNode buffer size
     const INTERRUPT_CONFIG = {
@@ -113,6 +114,7 @@
     const transcriptEl  = document.getElementById('transcript');
     const assistantStateEl = document.getElementById('assistantState');
     const modeBadgeEl   = document.getElementById('modeBadge');
+    const accessTokenEl = document.getElementById('accessToken');
 
     // ─── Logging ─────────────────────────────────────────────────────────────────
     function appendLog(text, cls = '') {
@@ -368,8 +370,16 @@
     }
 
     // ─── WebSocket ───────────────────────────────────────────────────────────────
+    function buildWsUrl() {
+      const token = accessTokenEl?.value?.trim();
+      if (!token) return WS_URL;
+      const url = new URL(WS_URL);
+      url.searchParams.set('access_token', token);
+      return url.toString();
+    }
+
     function connect() {
-      ws = new WebSocket(WS_URL);
+      ws = new WebSocket(buildWsUrl());
 
       ws.onopen = () => {
         setStatus('Connected', 'connected');

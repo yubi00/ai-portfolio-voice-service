@@ -23,7 +23,11 @@ if (config.nodeEnv === 'development') {
 const server = http.createServer(app);
 
 // WebSocket server attached to the same HTTP server, scoped to /ws path.
-const wss = new WebSocketServer({ server, path: '/ws' });
+const wss = new WebSocketServer({
+    server,
+    path: '/ws',
+    maxPayload: config.websocket.maxMessageBytes,
+});
 
 wss.on('connection', (ws, req) => {
     handleClientConnection(ws, req).catch((err: unknown) => {
@@ -40,6 +44,7 @@ server.listen(config.port, () => {
     logger.info('Voice service started', {
         port: config.port,
         env: config.nodeEnv,
+        requireAuth: config.auth.requireAuth,
         voiceMode: config.voice.mode,
         model:
             config.voice.mode === 'realtime'

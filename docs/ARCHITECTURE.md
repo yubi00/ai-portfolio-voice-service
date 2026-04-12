@@ -114,7 +114,7 @@ sequenceDiagram
     participant O as OpenAI Realtime API
 
     B->>R: Connect /ws
-    R->>R: Validate origin and session limits
+    R->>R: Validate origin, access token, rate limits, and session limits
     R->>K: buildSystemPrompt()
     K-->>R: Base system prompt
     R->>F: createVoiceSession(sessionId, prompt)
@@ -133,6 +133,37 @@ sequenceDiagram
 ```
 
 Important nuance: the Realtime path sets `turn_detection.create_response` to `false` and triggers `response.create` manually only after transcription is available. That choice is central to how the service preserves grounding quality.
+
+### WebSocket Auth Admission Flow
+
+```mermaid
+sequenceDiagram
+    participant F as Frontend Browser
+    participant A as FastAPI Backend
+    participant V as Voice Service
+    participant O as OpenAI Voice Session
+
+    alt Auth disabled
+        F->>V: Connect /ws
+        V->>V: Validate origin, rate limits, session caps
+        V->>O: Create upstream voice session
+    else Auth enabled
+        F->>A: Refresh short-lived access token
+        A-->>F: access_token
+        F->>V: Connect /ws?access_token=...
+        V->>V: Verify HS256 signature, typ=access, sid, exp
+        V->>V: Validate origin, rate limits, session caps
+        V->>O: Create upstream voice session
+    end
+
+    alt Verification fails
+        V-->>F: Close WS before session creation
+    end
+```
+
+This is intentionally verification-only in the voice service. Token issuance and refresh remain owned by the FastAPI backend.
+
+Current policy note: access tokens are checked only during WebSocket admission. Once the session is accepted, the conversation continues until disconnect, inactivity timeout, or hard session duration closes it.
 
 ### Turn-Based Request and Response Flow
 
@@ -235,7 +266,7 @@ The browser connects only to `/ws`. The server then opens and manages the upstre
 
 - keeps API keys off the client
 - centralizes system prompt injection and guardrails
-- allows origin checks, session caps, and server-side logging
+- allows token checks, origin checks, session caps, and server-side logging
 - preserves the option to swap or augment upstream providers later
 
 **Consequences**
@@ -337,7 +368,7 @@ Set `turn_detection.create_response` to `false` and send `response.create` only 
 - Negative: slightly more orchestration complexity
 - Negative: some latency is traded for answer quality
 
-### AD-07: Add lightweight cost and abuse guardrails in the relay layer
+### AD-07: Add admission control in the relay layer before voice sessions are created
 
 **Problem**
 
@@ -345,20 +376,23 @@ Voice sessions are expensive compared with simple text requests, and WebSocket e
 
 **Decision / Solution**
 
-Implement origin checks, maximum concurrent sessions, inactivity timeouts, and hard session duration caps in the relay/config layer.
+Implement origin checks, FastAPI-compatible access-token verification, per-process connection and control-message rate limits, maximum concurrent sessions, inactivity timeouts, and hard session duration caps in the relay/config layer.
 
 **Why this approach**
 
 - these controls are cheap to implement and immediately reduce operational risk
 - the relay is the earliest point where session admission can be controlled
-- they provide a minimum viable production posture before auth and rate limiting are added
+- they ensure unauthenticated traffic never consumes an upstream OpenAI voice session
+- they reuse the same token format already used by the primary FastAPI backend
 
 **Consequences**
 
 - Positive: reduced accidental cost exposure
 - Positive: predictable session cleanup behavior
-- Negative: origin allowlists are not real authentication
-- Negative: the service still needs proper auth and rate limiting for production internet exposure
+- Positive: short-lived access tokens can gate expensive voice sessions without duplicating token issuance here
+- Negative: in-memory rate limits only apply per process
+- Negative: browser WebSocket auth still needs query-param or subprotocol transport because browsers cannot set arbitrary upgrade headers
+- Negative: an already-admitted voice session can outlive the original access-token expiry until normal session limits close it
 
 ### AD-08: Use a development-only browser test page as the integration harness
 
@@ -410,8 +444,8 @@ Use a small JSON logger that writes to both console and rolling daily log files,
 
 The current architecture is solid for iterative development and demos, but several areas still need strengthening before broad production exposure:
 
-- authentication and authorization for `/ws`
-- rate limiting and abuse controls beyond origin checks
+- distributed rate limiting if the service is ever scaled past one instance
+- tighter integration testing around token refresh and reconnect behavior
 - normalization of the browser-facing event contract across both voice backends
 - automated tests around prompt routing, retrieval, and session lifecycle
 - deployment packaging and environment-specific operational configuration

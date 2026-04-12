@@ -38,9 +38,35 @@ function optionalString(key: string, defaultValue: string): string {
     return process.env[key] ?? defaultValue;
 }
 
+function optionalBoolean(key: string, defaultValue: boolean): boolean {
+    const raw = process.env[key];
+    if (!raw) return defaultValue;
+    const normalized = raw.trim().toLowerCase();
+    if (['1', 'true', 'yes'].includes(normalized)) return true;
+    if (['0', 'false', 'no'].includes(normalized)) return false;
+    throw new Error(`Env var ${key} must be a boolean, got: "${raw}"`);
+}
+
+const requireAuth = optionalBoolean('REQUIRE_AUTH', false);
+const authSigningSecret = requireAuth ? requireEnv('AUTH_SIGNING_SECRET') : optionalString('AUTH_SIGNING_SECRET', '');
+
 export const config = {
     port: parseInt(process.env.PORT ?? '3001', 10),
     nodeEnv: process.env.NODE_ENV ?? 'development',
+
+    auth: {
+        requireAuth,
+        signingSecret: authSigningSecret,
+        queryParamName: optionalString('VOICE_AUTH_QUERY_PARAM', 'access_token'),
+    },
+
+    websocket: {
+        maxMessageBytes: optionalInt('WS_MAX_MESSAGE_BYTES', 256 * 1024),
+        connectRateLimit: optionalInt('WS_CONNECT_RATE_LIMIT', 12),
+        connectRateWindowMs: optionalInt('WS_CONNECT_RATE_WINDOW_MS', 60 * 1000),
+        controlRateLimit: optionalInt('WS_CONTROL_RATE_LIMIT', 120),
+        controlRateWindowMs: optionalInt('WS_CONTROL_RATE_WINDOW_MS', 60 * 1000),
+    },
 
     voice: {
         mode: optionalVoiceMode('VOICE_MODE', 'realtime'),

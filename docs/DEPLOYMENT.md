@@ -61,6 +61,8 @@ Suggested production-oriented values:
 - `ALLOWED_ORIGINS` set to the exact production frontend origins
 - `MAX_CONCURRENT_SESSIONS` set conservatively at first
 - `INACTIVITY_TIMEOUT_MS` and `MAX_SESSION_DURATION_MS` kept finite and intentionally small
+- `REQUIRE_AUTH=true` once the real frontend is sending FastAPI-issued access tokens
+- `MAX_SESSION_DURATION_MS=1200000` as a reasonable first production cap for portfolio traffic (20 min)
 
 Operational advice:
 
@@ -77,9 +79,11 @@ Before shipping a release:
 3. Run `npm run build`.
 4. Confirm the correct `.env` values for the target environment.
 5. Confirm `ALLOWED_ORIGINS` is not empty in production.
-6. Confirm the GitHub catalog file is present and up to date if repo retrieval is expected to work.
-7. Review whether `VOICE_MODE` matches the intended cost and UX profile for the environment.
-8. Confirm the host or platform supports WebSocket upgrades and long-lived connections.
+6. Confirm `REQUIRE_AUTH` and `AUTH_SIGNING_SECRET` match the intended frontend auth behavior.
+7. Confirm any reverse proxy or platform logs do not record full WebSocket URLs with query strings.
+8. Confirm the GitHub catalog file is present and up to date if repo retrieval is expected to work.
+9. Review whether `VOICE_MODE` matches the intended cost and UX profile for the environment.
+10. Confirm the host or platform supports WebSocket upgrades and long-lived connections.
 
 ## Deployment Procedure
 
@@ -198,17 +202,26 @@ If a release changed only knowledge files and not code, a rollback can be as sma
 Controls already present in the app:
 
 - origin allowlist support
+- FastAPI-compatible access-token verification on `/ws`
+- per-process connection and control-message rate limiting
 - session concurrency cap
 - inactivity timeout
 - hard session duration cap
 - server-side secret handling
 
+Important auth behavior:
+
+- browser clients currently send the short-lived access token as a WebSocket query parameter
+- access tokens are validated only at connect time; accepted sessions are then bounded by inactivity and max-duration limits rather than minute-by-minute re-authentication
+- this is a deliberate UX tradeoff for long-lived voice sessions
+- production logs and reverse proxies should avoid storing full request URLs with query strings
+
 Controls that should be added before wider public exposure:
 
-- authenticated session creation or signed access token flow
-- rate limiting at the edge or application layer
 - stronger logging and alerting integration
 - deployment-level secret rotation and audit trail
+- refresh-token migration to `httpOnly` cookies in the main FastAPI backend
+- optional distributed rate limiting if the service is scaled horizontally
 
 Recommended production posture today:
 
@@ -225,7 +238,8 @@ This runbook is intentionally honest about the current state. The following are 
 - deployment manifests
 - CI pipeline for build and release
 - automated health smoke tests
-- auth and rate limiting implementation
 - centralized logging setup
+
+What remains incomplete is not auth existence, but deeper production hardening: frontend token-refresh-aware reconnects, distributed rate limits, and deployment-level log hygiene around query-string token transport.
 
 That means the service is deployable, but it is still in the "careful controlled rollout" stage rather than a fully hardened public-service stage.

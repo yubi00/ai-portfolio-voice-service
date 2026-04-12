@@ -51,12 +51,13 @@ Implemented now:
 - provider-backed persona and portfolio knowledge injection
 - local GitHub project retrieval from generated project cards
 - browser dev test page for manual end-to-end validation
+- optional FastAPI-compatible access-token verification on `/ws`
+- per-process WebSocket connection and control-message rate limiting
+- inbound client message validation and payload caps
 - structured JSON logging to console and daily log files
 
 Not implemented yet:
 
-- production authentication on the WebSocket endpoint
-- rate limiting
 - Docker or deployment packaging
 - real React portfolio integration inside this repository
 - automated tests
@@ -84,6 +85,9 @@ Not implemented yet:
 │   ├── relay/
 │   │   ├── OpenAIRealtimeSession.ts  # Upstream Realtime session manager
 │   │   └── relayHandler.ts           # Browser WS connection orchestration
+│   ├── security/
+│   │   ├── rateLimit.ts              # Per-process rate limiting and IP extraction
+│   │   └── tokenAuth.ts              # FastAPI-compatible access-token verification
 │   ├── scripts/
 │   │   └── syncGithubProjects.ts     # Offline GitHub catalog sync
 │   └── voice/
@@ -123,7 +127,7 @@ The most important structural choice is that the browser always talks to one bac
 ### Realtime Mode
 
 1. Browser connects to `/ws`.
-2. The server validates origin and concurrency limits.
+2. The server validates origin, optional access token, connection rate limits, and concurrency limits.
 3. The service builds the base system prompt from provider-backed portfolio knowledge.
 4. The backend opens an upstream WebSocket to the OpenAI Realtime API.
 5. The backend sends `session.update` with model, voice, VAD, transcription, and instructions.
@@ -134,13 +138,14 @@ The most important structural choice is that the browser always talks to one bac
 ### Turn-Based Mode
 
 1. Browser connects to `/ws`.
-2. The backend creates a `TurnBasedVoiceSession` instead of the Realtime adapter.
-3. Incoming PCM chunks are buffered locally.
-4. Local RMS-based silence detection decides when a user utterance ends.
-5. Buffered audio is transcribed with OpenAI transcription.
-6. The backend builds a grounded chat request from base prompt, dynamic project context, and short history.
-7. The assistant text is streamed to the browser.
-8. The final assistant text is converted to PCM audio with OpenAI TTS and streamed back in chunks.
+2. The server validates origin, optional access token, connection rate limits, and concurrency limits.
+3. The backend creates a `TurnBasedVoiceSession` instead of the Realtime adapter.
+4. Incoming PCM chunks are buffered locally.
+5. Local RMS-based silence detection decides when a user utterance ends.
+6. Buffered audio is transcribed with OpenAI transcription.
+7. The backend builds a grounded chat request from base prompt, dynamic project context, and short history.
+8. The assistant text is streamed to the browser.
+9. The final assistant text is converted to PCM audio with OpenAI TTS and streamed back in chunks.
 
 ## Getting Started
 
@@ -177,6 +182,13 @@ MAX_SESSION_DURATION_MS=300000
 INACTIVITY_TIMEOUT_MS=30000
 MAX_CONCURRENT_SESSIONS=3
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+
+# Optional WebSocket auth + abuse controls
+REQUIRE_AUTH=false
+AUTH_SIGNING_SECRET=shared_secret_from_fastapi
+VOICE_AUTH_QUERY_PARAM=access_token
+WS_CONNECT_RATE_LIMIT=12
+WS_CONTROL_RATE_LIMIT=120
 ```
 
 ### Run in Development
@@ -218,6 +230,14 @@ npm start
 | `INACTIVITY_TIMEOUT_MS` | No | `30000` | Auto-close idle sessions |
 | `MAX_CONCURRENT_SESSIONS` | No | `3` | Cost guard on parallel sessions |
 | `ALLOWED_ORIGINS` | No | empty | Comma-separated allowed browser origins |
+| `REQUIRE_AUTH` | No | `false` | Require FastAPI-compatible access tokens for `/ws` |
+| `AUTH_SIGNING_SECRET` | When auth enabled | empty | Shared HMAC secret used to verify access tokens |
+| `VOICE_AUTH_QUERY_PARAM` | No | `access_token` | Query-string parameter name for browser WS auth |
+| `WS_MAX_MESSAGE_BYTES` | No | `262144` | Max size for a single inbound client WS message |
+| `WS_CONNECT_RATE_LIMIT` | No | `12` | Max connection attempts per IP per window |
+| `WS_CONNECT_RATE_WINDOW_MS` | No | `60000` | Window for connection attempt limiting |
+| `WS_CONTROL_RATE_LIMIT` | No | `120` | Max non-audio control messages per token/IP per window |
+| `WS_CONTROL_RATE_WINDOW_MS` | No | `60000` | Window for control-message limiting |
 | `GITHUB_TOKEN` | Only for sync | None | Token used by `npm run sync:github` |
 | `GITHUB_USERNAME` | Only for sync | `yubi00` | GitHub account to sync |
 
@@ -273,6 +293,33 @@ Choose `realtime` for demos and the best conversational feel. Choose `turn-based
 The browser talks to one endpoint:
 
 - `ws://localhost:3001/ws`
+
+Authentication behavior:
+
+- when `REQUIRE_AUTH=false`, clients can connect without a token
+- when `REQUIRE_AUTH=true`, browser clients must send the FastAPI-issued short-lived access token as `?access_token=<token>`
+- non-browser clients may also use `Authorization: Bearer <token>` during the WebSocket upgrade request
+- access tokens are verified only at WebSocket connect time; accepted voice sessions are not re-authenticated mid-session
+
+Implementation note:
+
+- the voice service does not use `jsonwebtoken`; it verifies the FastAPI backend's existing HS256 `header.payload.signature` token format directly with Node `crypto`
+- `jsonwebtoken` could also have worked, but matching the Python backend exactly was lower-risk than introducing a library with its own JWT parsing and validation defaults
+
+Text flow diagram:
+
+```text
+Frontend -> FastAPI backend: fetch or refresh short-lived access token
+Frontend -> Voice service /ws?access_token=...: open WebSocket
+Voice service -> Voice service: verify HS256 token, origin, rate limits, session caps
+Voice service -> OpenAI: create upstream voice session only after admission passes
+Voice service -> Frontend: stream transcript/audio events
+```
+
+Operational note:
+
+- the current browser transport uses a query-string access token because standard browser WebSocket APIs do not allow setting custom `Authorization` headers
+- this is acceptable for short-lived access tokens, but production logging should avoid recording full WebSocket URLs with query strings
 
 Common client messages:
 
@@ -359,17 +406,21 @@ Use that document for:
 The service already includes a small but important set of cost and safety controls:
 
 - origin allowlist support for browser connections
+- optional access-token verification using the same HS256 token format as the FastAPI backend
 - concurrent-session cap
 - inactivity timeout
 - maximum session duration
+- per-process connection-attempt rate limiting
+- per-process non-audio control-message rate limiting
+- inbound client message type validation and payload-size caps
 - structured logs with session IDs and event metadata
 
-These are intentionally lightweight. They help control accidental cost and noisy traffic, but they are not a substitute for production-grade authentication, authorization, and rate limiting.
+These are intentionally lightweight. They help control accidental cost and noisy traffic, but they are still per-process controls. If the service is scaled horizontally later, the rate limits should move to a shared store.
 
 ## Known Gaps
 
-- `/ws` is not yet protected by application auth
-- there is no IP or token-based rate limiting
+- token issuance and refresh still live in the FastAPI backend, not this repository
+- rate limits are in-memory per instance, not distributed
 - there are no automated tests yet; verification is manual through `/test`
 - the frontend-facing event contract is only partially normalized across backends
 - no deployment manifests are included yet

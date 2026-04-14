@@ -98,6 +98,8 @@ export const config = {
     costGuards: {
         // Hard cap on how long a single session can stay open regardless of activity.
         maxSessionDurationMs: optionalInt('MAX_SESSION_DURATION_MS', 5 * 60 * 1000), // default: 5 min
+        // Hard cap on cumulative inbound user audio accepted for a session.
+        maxAudioSecondsPerSession: optionalInt('MAX_AUDIO_SECONDS_PER_SESSION', 10 * 60), // default: 10 min
         // Auto-close if no audio/messages received from the browser for this long.
         inactivityTimeoutMs: optionalInt('INACTIVITY_TIMEOUT_MS', 30 * 1000), // default: 30s
         // Max simultaneous OpenAI WS sessions across all browser clients.

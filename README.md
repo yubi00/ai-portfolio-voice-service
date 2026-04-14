@@ -179,6 +179,7 @@ TURN_BASED_TTS_MODEL=gpt-4o-mini-tts
 
 # Optional guardrails
 MAX_SESSION_DURATION_MS=300000
+MAX_AUDIO_SECONDS_PER_SESSION=480
 INACTIVITY_TIMEOUT_MS=30000
 MAX_CONCURRENT_SESSIONS=3
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
@@ -227,6 +228,7 @@ npm start
 | `TURN_BASED_PCM_CHUNK_BYTES` | No | `4800` | Outbound audio chunk size |
 | `TURN_BASED_MAX_HISTORY_MESSAGES` | No | `8` | Short chat history window |
 | `MAX_SESSION_DURATION_MS` | No | `300000` | Hard cap for any single session |
+| `MAX_AUDIO_SECONDS_PER_SESSION` | No | `600` | Hard cap on cumulative inbound user audio for a session, in seconds. A practical production starting point is `480` (8 minutes). |
 | `INACTIVITY_TIMEOUT_MS` | No | `30000` | Auto-close idle sessions |
 | `MAX_CONCURRENT_SESSIONS` | No | `3` | Cost guard on parallel sessions |
 | `ALLOWED_ORIGINS` | No | empty | Comma-separated allowed browser origins |
@@ -408,6 +410,7 @@ The service already includes a small but important set of cost and safety contro
 - origin allowlist support for browser connections
 - optional access-token verification using the same HS256 token format as the FastAPI backend
 - concurrent-session cap
+- cumulative inbound audio cap per session
 - inactivity timeout
 - maximum session duration
 - per-process connection-attempt rate limiting

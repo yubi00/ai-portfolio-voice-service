@@ -393,6 +393,7 @@ Implement origin checks, FastAPI-compatible access-token verification, per-proce
 - Negative: in-memory rate limits only apply per process
 - Negative: browser WebSocket auth still needs query-param or subprotocol transport because browsers cannot set arbitrary upgrade headers
 - Negative: an already-admitted voice session can outlive the original access-token expiry until normal session limits close it
+- Negative: when query-param auth is used behind Cloud Run, request logs can capture `/ws?access_token=...`; this is currently accepted because the access token TTL is only 30 seconds, but it is a known tradeoff rather than an ideal steady-state design
 
 ### AD-08: Use a development-only browser test page as the integration harness
 

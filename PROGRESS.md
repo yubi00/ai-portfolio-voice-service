@@ -189,7 +189,7 @@ These apply to every line written, every phase, no exceptions:
 - [x] Add rate limiting for voice session creation and WebSocket usage to control abuse and cost
 - [x] Add JWT access-token verification path for the real frontend session before opening privileged voice sessions
 - [x] Add session timeout: auto-close OpenAI WS after N minutes of silence
-- [ ] Add cost guard: max audio seconds per session config
+- [x] Add cost guard: max audio seconds per session config
 - [x] Update frontend WS connection flow to attach FastAPI-issued access token when voice auth is enabled
 - [x] Add frontend handling for auth-related WS rejection and reconnect after token refresh
 - [x] Add graceful reconnect logic on browser WS disconnect
@@ -239,15 +239,14 @@ These apply to every line written, every phase, no exceptions:
 
 > Update this line as you progress.
 
-**Currently working on: Next-up infrastructure hardening — manual GitHub Actions CI/CD is in place; query-string token exposure is next**
+**Currently working on: Next-up infrastructure hardening — max-audio cost guard is implemented and verified; next is lower-priority follow-up work**
 
 ## Next Recommended Work
 
 > Follow this order unless something breaks in production and changes the priority.
 
-1. Reduce query-string token exposure in platform logs
-2. Add max-audio-seconds cost guard per session
-3. Revisit post-MVP improvements only after the above are stable
+1. Revisit query-string token transport if TTL, logging posture, or threat model changes
+2. Revisit post-MVP improvements only after the above are stable
 
 ---
 

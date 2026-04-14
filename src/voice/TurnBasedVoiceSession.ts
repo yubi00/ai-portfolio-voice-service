@@ -5,6 +5,7 @@ import { formatFeaturedProjectsForPrompt } from '../knowledge/featuredProjects';
 import { formatProfileContextForPrompt } from '../knowledge/profileContext';
 import { findRelevantGithubProjects, formatGithubProjectsForPrompt, shouldUseGithubProjectContext } from '../knowledge/githubProjects';
 import { logger } from '../lib/logger';
+import { getPcm16ChunkDurationMs } from '../lib/audio';
 import { VoiceSession, VoiceSessionCallbacks } from './VoiceSession';
 
 const TURN_BASED_RESPONSE_STYLE = 'You are in turn-based voice mode. Keep replies concise and spoken: usually 1 to 2 short sentences, roughly under 45 words unless the user explicitly asks for more detail. Sound conversational and off-the-cuff, like Yubi answering naturally in an interview, not like reading from a script or polished summary. Stay tightly grounded in the provided portfolio knowledge for this conversation. For broad project questions such as which project you are most proud of or what someone should look at first, answer from the curated Key Projects section rather than improvising. If the knowledge does not support a detail, say so plainly instead of guessing.';
@@ -178,7 +179,7 @@ export class TurnBasedVoiceSession implements VoiceSession {
 
     private async ingestAudioChunk(chunk: Buffer): Promise<void> {
         const rms = computePcm16Rms(chunk);
-        const durationMs = getPcm16ChunkDurationMs(chunk);
+        const durationMs = getPcm16ChunkDurationMs(chunk.length);
         const isSpeech = rms >= config.voice.turnBased.silenceThreshold;
 
         if (isSpeech) {
@@ -498,11 +499,6 @@ function computePcm16Rms(buffer: Buffer): number {
         samples += 1;
     }
     return samples === 0 ? 0 : Math.sqrt(sum / samples);
-}
-
-function getPcm16ChunkDurationMs(buffer: Buffer, sampleRate = 24000): number {
-    const sampleCount = Math.floor(buffer.length / 2);
-    return (sampleCount / sampleRate) * 1000;
 }
 
 function createWavFromPcm16(pcmAudio: Buffer, sampleRate: number, channels: number): Buffer {

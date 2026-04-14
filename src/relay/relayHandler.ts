@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import { IncomingMessage } from 'http';
 import { logger } from '../lib/logger';
+import { getPcm16ChunkDurationMs } from '../lib/audio';
 import { config } from '../config';
 import { knowledgeProvider, buildSystemPrompt } from '../knowledge';
 import { getClientIp, wsConnectionLimiter, wsControlMessageLimiter } from '../security/rateLimit';
@@ -113,6 +114,7 @@ export async function handleClientConnection(clientWs: WebSocket, req: IncomingM
     activeSessions++;
     const sessionId = generateSessionId();
     let releasedSession = false;
+    let totalInboundAudioMs = 0;
 
     const releaseSession = (): void => {
         if (releasedSession) return;
@@ -212,6 +214,31 @@ export async function handleClientConnection(clientWs: WebSocket, req: IncomingM
             }
 
             voiceSession.resetInactivity();
+        }
+
+        if (parsedMessage.type === 'input_audio_buffer.append' && parsedMessage.audio) {
+            const audioBytes = Buffer.byteLength(parsedMessage.audio, 'base64');
+            totalInboundAudioMs += getPcm16ChunkDurationMs(audioBytes);
+
+            if (totalInboundAudioMs > config.costGuards.maxAudioSecondsPerSession * 1000) {
+                logger.warn('Closing voice session: max inbound audio budget exceeded', {
+                    sessionId,
+                    clientIp,
+                    authSid: authClaims?.sid,
+                    totalInboundAudioMs,
+                    maxAudioSecondsPerSession: config.costGuards.maxAudioSecondsPerSession,
+                });
+
+                if (clientWs.readyState === WebSocket.OPEN) {
+                    clientWs.send(JSON.stringify({
+                        type: 'relay.error',
+                        message: `Maximum session audio budget exceeded (${config.costGuards.maxAudioSecondsPerSession}s).`,
+                    }));
+                }
+
+                voiceSession.close('max_audio');
+                return;
+            }
         }
 
         voiceSession.send(raw);

@@ -356,6 +356,7 @@ Controls already present in the app:
 - FastAPI-compatible access-token verification on `/ws`
 - per-process connection and control-message rate limiting
 - session concurrency cap
+- cumulative inbound audio cap per session
 - inactivity timeout
 - hard session duration cap
 - server-side secret handling
@@ -367,6 +368,26 @@ Important auth behavior:
 - this is a deliberate UX tradeoff for long-lived voice sessions
 - production logs and reverse proxies should avoid storing full request URLs with query strings
 - current Cloud Run request logs do record `/ws?access_token=...` for successful authenticated WebSocket upgrades, so query-string token exposure is a confirmed follow-up item rather than a theoretical one
+
+Current decision on query-string token transport:
+
+- keep the current `?access_token=` transport for now
+- rationale: the access token TTL is currently only `30s`, the service is low traffic, and the current deployment/auth rollout is working cleanly
+- this is accepted as a pragmatic tradeoff for the current project stage, not as an ideal long-term auth transport
+
+Candidate follow-up options:
+
+1. Keep query-string transport as-is
+   - Pros: zero implementation effort, no protocol changes, current frontend/backend flow remains stable
+   - Cons: short-lived bearer tokens continue to appear in Cloud Run request logs
+
+2. Move the auth token to `Sec-WebSocket-Protocol`
+   - Pros: removes the token from the URL, avoids the current query-string logging path, relatively small frontend/backend change
+   - Cons: this header is intended for subprotocol negotiation rather than auth, implementation is more awkward, and it is still not as strong as a dedicated one-time ticket flow
+
+3. Introduce a one-time voice connection ticket
+   - Pros: strongest model for this architecture, avoids exposing the main access token during WebSocket connect, can be very short-lived and single-use
+   - Cons: requires more backend/frontend work and an additional ticket-issuance flow
 
 Controls that should be added before wider public exposure:
 
@@ -380,6 +401,8 @@ Current billing protection already in place:
 - a `5 AUD` monthly Cloud Billing budget scoped to project `yubi-portfolio-voice-chat`
 - alert thresholds at `50%`, `90%`, and `100%`
 - this budget is alerting-only; it does not automatically shut down Cloud Run or OpenAI usage
+- the backend also supports `MAX_AUDIO_SECONDS_PER_SESSION`, which is measured in seconds and caps cumulative inbound user audio per session
+- current recommended production value for `MAX_AUDIO_SECONDS_PER_SESSION`: `480` (8 minutes)
 
 Recommended production posture today:
 
@@ -397,7 +420,7 @@ This runbook is intentionally honest about the current state. The following are 
 - automated health smoke tests
 - centralized logging setup
 
-What remains incomplete is not deployability, but deeper production hardening: max-audio cost guard implementation, distributed rate limits, and deployment-level log hygiene around query-string token transport.
+What remains incomplete is not deployability, but deeper production hardening: distributed rate limits and future reconsideration of the current query-string token transport/log-hygiene tradeoff.
 
 That means the service is deployable, but it is still in the "careful controlled rollout" stage rather than a fully hardened public-service stage.
 
@@ -459,3 +482,4 @@ Current status:
 - the Artifact Registry Docker repository exists
 - a manual `workflow_dispatch` run completed successfully
 - the manual image-based Cloud Run deployment path is now validated
+- the max-audio session guard was manually verified locally with a low temporary value and clean `max_audio` session closure

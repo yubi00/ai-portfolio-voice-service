@@ -402,7 +402,7 @@ Current billing protection already in place:
 - alert thresholds at `50%`, `90%`, and `100%`
 - this budget is alerting-only; it does not automatically shut down Cloud Run or OpenAI usage
 - the backend also supports `MAX_AUDIO_SECONDS_PER_SESSION`, which is measured in seconds and caps cumulative inbound user audio per session
-- current recommended production value for `MAX_AUDIO_SECONDS_PER_SESSION`: `480` (8 minutes)
+- current production value for `MAX_AUDIO_SECONDS_PER_SESSION`: `480` (8 minutes)
 
 Recommended production posture today:
 

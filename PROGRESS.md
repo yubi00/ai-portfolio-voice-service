@@ -190,9 +190,9 @@ These apply to every line written, every phase, no exceptions:
 - [x] Add JWT access-token verification path for the real frontend session before opening privileged voice sessions
 - [x] Add session timeout: auto-close OpenAI WS after N minutes of silence
 - [ ] Add cost guard: max audio seconds per session config
-- [ ] Update frontend WS connection flow to attach FastAPI-issued access token when voice auth is enabled
-- [ ] Add frontend handling for auth-related WS rejection and reconnect after token refresh
-- [ ] Add graceful reconnect logic on browser WS disconnect
+- [x] Update frontend WS connection flow to attach FastAPI-issued access token when voice auth is enabled
+- [x] Add frontend handling for auth-related WS rejection and reconnect after token refresh
+- [x] Add graceful reconnect logic on browser WS disconnect
 - [x] Add structured logging (w/ session IDs) for debugging production issues
 
 **Phase 8 done when:** WebSocket admission is authenticated and hardened, and the remaining reconnect / cost controls are ready for staging.
@@ -203,7 +203,7 @@ These apply to every line written, every phase, no exceptions:
 
 > Goal: Deploy the backend voice service to Google Cloud Run with a low-cost default configuration that is good enough for portfolio traffic.
 
-- [ ] Add deployment artifacts needed for Cloud Run (at minimum `Dockerfile`, and any helpful `.dockerignore` / deploy notes)
+- [x] Add deployment artifacts needed for Cloud Run (at minimum `Dockerfile`, and any helpful `.dockerignore` / deploy notes)
 - [ ] Ensure the service runs correctly with Cloud Run's `PORT` environment variable
 - [ ] Keep the initial Cloud Run setup cost-conscious (`min-instances=0` unless testing proves cold starts are unacceptable)
 - [ ] Configure production env vars and secret handling for `OPENAI_API_KEY`, `VOICE_MODE`, `ALLOWED_ORIGINS`, and session guardrails
@@ -236,7 +236,7 @@ These apply to every line written, every phase, no exceptions:
 
 > Update this line as you progress.
 
-**Currently working on: Phase 8 hardening — WebSocket auth and admission controls are in place; reconnect and finer-grained cost controls are next**
+**Currently working on: Phase 9 Cloud Run deployment — container artifacts are in place; next is platform setup, env/secrets, and first deploy**
 
 ---
 

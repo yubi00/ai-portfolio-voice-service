@@ -48,7 +48,7 @@ Suitable hosting shapes:
 
 - a small VM or VPS with `systemd` and Nginx or Caddy
 - a platform that supports long-lived WebSockets cleanly
-- a container platform, but only after adding the missing deployment artifacts separately
+- a container platform such as Google Cloud Run once container artifacts and secret wiring are in place
 
 ## Environment Strategy
 
@@ -57,12 +57,12 @@ Use [.env.example](../.env.example) as the baseline for required and optional va
 Suggested production-oriented values:
 
 - `NODE_ENV=production`
-- `VOICE_MODE=realtime` for best experience, or `turn-based` for lower cost
+- `VOICE_MODE=turn-based` for the initial low-cost Cloud Run rollout, or `realtime` later if the higher-cost duplex experience is worth it
 - `ALLOWED_ORIGINS` set to the exact production frontend origins
 - `MAX_CONCURRENT_SESSIONS` set conservatively at first
 - `INACTIVITY_TIMEOUT_MS` and `MAX_SESSION_DURATION_MS` kept finite and intentionally small
 - `REQUIRE_AUTH=true` once the real frontend is sending FastAPI-issued access tokens
-- `MAX_SESSION_DURATION_MS=1200000` as a reasonable first production cap for portfolio traffic (20 min)
+- `MAX_SESSION_DURATION_MS=900000` as the currently verified Cloud Run setting (15 min)
 
 Operational advice:
 
@@ -87,7 +87,149 @@ Before shipping a release:
 
 ## Deployment Procedure
 
-This repository does not yet include a Dockerfile, IaC, or platform-specific manifest, so the safest current procedure is a basic Node.js service release.
+This repository now includes a basic `Dockerfile` and `.dockerignore` suitable for Google Cloud Run source deployments. It does not yet include IaC or CI/CD release automation.
+
+### Verified Cloud Run flow
+
+This is the exact deployment shape that was successfully verified for the current portfolio rollout.
+
+Verified platform configuration:
+
+- Google Cloud project: `yubi-portfolio-voice-chat`
+- Region: `australia-southeast1`
+- Cloud Run service: `yubi-voice-service`
+- Public service URL: `https://yubi-voice-service-69604910031.australia-southeast1.run.app`
+- Frontend origin allowlist: `https://www.yubikhadka.com`
+- Voice mode: `turn-based`
+- Cloud Run min instances: `0`
+- Cloud Run max instances: `1`
+- Cloud Run concurrency: `3`
+- Cloud Run timeout: `900s`
+- Runtime memory: `512Mi`
+- Runtime CPU: `1`
+- Current auth posture: `REQUIRE_AUTH=true`
+
+Secrets used:
+
+- `openai-api-key` stored in Google Secret Manager
+- `auth-signing-secret` stored in Google Secret Manager
+
+Required APIs:
+
+- `run.googleapis.com`
+- `cloudbuild.googleapis.com`
+- `artifactregistry.googleapis.com`
+- `secretmanager.googleapis.com`
+
+Important IAM note:
+
+- The Cloud Run runtime service account needed `roles/secretmanager.secretAccessor` to read `openai-api-key`
+
+### Verified Cloud Run command sequence
+
+Use this sequence when reproducing the deployment manually with `gcloud`.
+
+1. Select the target project:
+
+```bash
+gcloud config set project yubi-portfolio-voice-chat
+```
+
+2. Set the default Cloud Run region:
+
+```bash
+gcloud config set run/region australia-southeast1
+```
+
+3. Enable required services:
+
+```bash
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com
+```
+
+4. Create the OpenAI secret container:
+
+```bash
+gcloud secrets create openai-api-key --replication-policy=automatic
+```
+
+5. Add the secret value as the first version:
+
+```bash
+echo -n "YOUR_OPENAI_API_KEY" | gcloud secrets versions add openai-api-key --data-file=-
+```
+
+6. Grant the Cloud Run runtime identity access to secrets:
+
+```bash
+gcloud projects add-iam-policy-binding yubi-portfolio-voice-chat \
+  --member="serviceAccount:69604910031-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+7. Create the auth signing secret container:
+
+```bash
+gcloud secrets create auth-signing-secret --replication-policy=automatic
+```
+
+8. Add the signing secret value:
+
+```bash
+echo -n "YOUR_FASTAPI_AUTH_SIGNING_SECRET" | gcloud secrets versions add auth-signing-secret --data-file=-
+```
+
+9. Deploy from source for the initial smoke test:
+
+```bash
+gcloud run deploy yubi-voice-service \
+  --source . \
+  --region australia-southeast1 \
+  --allow-unauthenticated \
+  --set-secrets OPENAI_API_KEY=openai-api-key:latest \
+  --set-env-vars NODE_ENV=production,REQUIRE_AUTH=false,ALLOWED_ORIGINS=https://www.yubikhadka.com,VOICE_MODE=turn-based,OPENAI_VOICE=cedar,MAX_SESSION_DURATION_MS=900000,MAX_CONCURRENT_SESSIONS=3,INACTIVITY_TIMEOUT_MS=30000,TURN_BASED_TRANSCRIPTION_MODEL=whisper-1,TURN_BASED_CHAT_MODEL=gpt-4o-mini,TURN_BASED_TTS_MODEL=gpt-4o-mini-tts,TURN_BASED_SILENCE_THRESHOLD=0.015,TURN_BASED_SILENCE_DURATION_MS=700,TURN_BASED_MIN_SPEECH_DURATION_MS=250,TURN_BASED_PCM_CHUNK_BYTES=4800,TURN_BASED_MAX_HISTORY_MESSAGES=8 \
+  --min-instances=0 \
+  --max-instances=1 \
+  --concurrency=3 \
+  --cpu=1 \
+  --memory=512Mi \
+  --timeout=900
+```
+
+10. Redeploy with auth enabled:
+
+```bash
+gcloud run deploy yubi-voice-service \
+  --source . \
+  --region australia-southeast1 \
+  --allow-unauthenticated \
+  --set-secrets OPENAI_API_KEY=openai-api-key:latest,AUTH_SIGNING_SECRET=auth-signing-secret:latest \
+  --set-env-vars NODE_ENV=production,REQUIRE_AUTH=true,VOICE_AUTH_QUERY_PARAM=access_token,ALLOWED_ORIGINS=https://www.yubikhadka.com,VOICE_MODE=turn-based,OPENAI_VOICE=cedar,MAX_SESSION_DURATION_MS=900000,MAX_CONCURRENT_SESSIONS=3,INACTIVITY_TIMEOUT_MS=30000,TURN_BASED_TRANSCRIPTION_MODEL=whisper-1,TURN_BASED_CHAT_MODEL=gpt-4o-mini,TURN_BASED_TTS_MODEL=gpt-4o-mini-tts,TURN_BASED_SILENCE_THRESHOLD=0.015,TURN_BASED_SILENCE_DURATION_MS=700,TURN_BASED_MIN_SPEECH_DURATION_MS=250,TURN_BASED_PCM_CHUNK_BYTES=4800,TURN_BASED_MAX_HISTORY_MESSAGES=8 \
+  --min-instances=0 \
+  --max-instances=1 \
+  --concurrency=3 \
+  --cpu=1 \
+  --memory=512Mi \
+  --timeout=900
+```
+
+Notes on these commands:
+
+- `--source .` uses Cloud Build, which is useful when Docker is unavailable locally
+- `--allow-unauthenticated` exposes the Cloud Run URL publicly, while app-level access is still shaped by `ALLOWED_ORIGINS` and later `REQUIRE_AUTH`
+- `--timeout=900` allows long-lived WebSocket voice sessions
+- `min-instances=0` keeps idle cost near zero
+- `max-instances=1` plus `concurrency=3` keeps the rollout intentionally small
+- `MAX_CONCURRENT_SESSIONS=3` is the app-level session cap inside that one container instance
+- the second deploy injects `AUTH_SIGNING_SECRET` and turns on access-token verification for `/ws`
+
+### Current frontend wiring
+
+The current frontend integration uses:
+
+- `VITE_VOICE_ENABLED=true`
+- `VITE_VOICE_WS_URL=wss://yubi-voice-service-69604910031.australia-southeast1.run.app/ws`
+- `VITE_REQUIRE_AUTH=true`
 
 ### Generic host-based flow
 
@@ -149,6 +291,15 @@ Manual smoke test checklist:
 - ask about a specific GitHub repo and verify retrieval works
 - interrupt the assistant mid-response and verify cancellation behavior
 
+Verified Cloud Run checks already performed:
+
+- `GET /health` returned `200` with `{ "status": "ok" }`
+- a plain `curl` to `/ws` returned `404 Cannot GET /ws`, which is expected because `/ws` is WebSocket-only and not an Express HTTP route
+- a real WebSocket client (`wscat`) connected successfully to `wss://yubi-voice-service-69604910031.australia-southeast1.run.app/ws` with `Origin: https://www.yubikhadka.com` before auth was enabled
+- the deployed service emitted `session.created` and `session.updated` events in `turn-based` mode
+- after `REQUIRE_AUTH=true`, an unauthenticated `wscat` connection was rejected with close code `1008` and reason `Unauthorized`
+- an end-to-end voice conversation from `https://www.yubikhadka.com` completed successfully against the deployed Cloud Run backend after frontend auth was enabled
+
 ## Runtime Operations
 
 Operationally important runtime facts:
@@ -190,10 +341,10 @@ Check in this order:
 
 Because the service is stateless at runtime, rollback is simple:
 
-1. redeploy the previous known-good build artifact
-2. restore the previous environment configuration if config changed
-3. restart the service process
-4. rerun the smoke checks
+1. identify the previous healthy Cloud Run revision
+2. shift traffic back to that revision or redeploy the previous known-good configuration
+3. restore the previous environment or secret references if config changed
+4. rerun `/health`, WebSocket handshake, and one frontend smoke test
 
 If a release changed only knowledge files and not code, a rollback can be as small as restoring the previous generated knowledge assets and restarting the process.
 
@@ -215,10 +366,12 @@ Important auth behavior:
 - access tokens are validated only at connect time; accepted sessions are then bounded by inactivity and max-duration limits rather than minute-by-minute re-authentication
 - this is a deliberate UX tradeoff for long-lived voice sessions
 - production logs and reverse proxies should avoid storing full request URLs with query strings
+- current Cloud Run request logs do record `/ws?access_token=...` for successful authenticated WebSocket upgrades, so query-string token exposure is a confirmed follow-up item rather than a theoretical one
 
 Controls that should be added before wider public exposure:
 
 - stronger logging and alerting integration
+- budget alerts and usage monitoring in Google Cloud Billing
 - deployment-level secret rotation and audit trail
 - refresh-token migration to `httpOnly` cookies in the main FastAPI backend
 - optional distributed rate limiting if the service is scaled horizontally
@@ -234,12 +387,11 @@ Recommended production posture today:
 
 This runbook is intentionally honest about the current state. The following are still missing from the repository itself:
 
-- Dockerfile
 - deployment manifests
 - CI pipeline for build and release
 - automated health smoke tests
 - centralized logging setup
 
-What remains incomplete is not auth existence, but deeper production hardening: frontend token-refresh-aware reconnects, distributed rate limits, and deployment-level log hygiene around query-string token transport.
+What remains incomplete is not deployability, but deeper production hardening: budget alerts, CI/CD automation, max-audio cost guard implementation, distributed rate limits, and deployment-level log hygiene around query-string token transport.
 
 That means the service is deployable, but it is still in the "careful controlled rollout" stage rather than a fully hardened public-service stage.

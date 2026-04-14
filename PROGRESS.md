@@ -204,15 +204,18 @@ These apply to every line written, every phase, no exceptions:
 > Goal: Deploy the backend voice service to Google Cloud Run with a low-cost default configuration that is good enough for portfolio traffic.
 
 - [x] Add deployment artifacts needed for Cloud Run (at minimum `Dockerfile`, and any helpful `.dockerignore` / deploy notes)
-- [ ] Ensure the service runs correctly with Cloud Run's `PORT` environment variable
-- [ ] Keep the initial Cloud Run setup cost-conscious (`min-instances=0` unless testing proves cold starts are unacceptable)
-- [ ] Configure production env vars and secret handling for `OPENAI_API_KEY`, `VOICE_MODE`, `ALLOWED_ORIGINS`, and session guardrails
-- [ ] Set Cloud Run request timeout appropriately for WebSocket voice sessions
-- [ ] Confirm WebSocket upgrade behavior works correctly behind Cloud Run
-- [ ] Deploy a staging or first private revision to Cloud Run
-- [ ] Verify `/health` and `/ws` work on the deployed service
-- [ ] Run an end-to-end smoke test from the real frontend against the deployed backend
-- [ ] Document the exact deploy / rollback steps used for Cloud Run
+- [x] Ensure the service runs correctly with Cloud Run's `PORT` environment variable
+- [x] Keep the initial Cloud Run setup cost-conscious (`min-instances=0` unless testing proves cold starts are unacceptable)
+- [x] Configure production env vars and secret handling for `OPENAI_API_KEY`, `VOICE_MODE`, `ALLOWED_ORIGINS`, and session guardrails
+- [x] Set Cloud Run request timeout appropriately for WebSocket voice sessions
+- [x] Confirm WebSocket upgrade behavior works correctly behind Cloud Run
+- [x] Deploy a staging or first private revision to Cloud Run
+- [x] Verify `/health` and `/ws` work on the deployed service
+- [x] Run an end-to-end smoke test from the real frontend against the deployed backend
+- [x] Add `AUTH_SIGNING_SECRET` via Secret Manager and redeploy Cloud Run with `REQUIRE_AUTH=true`
+- [x] Verify unauthenticated `/ws` access is rejected after auth is enabled
+- [x] Verify the real frontend still works end-to-end with auth enabled
+- [x] Document the exact deploy / rollback steps used for Cloud Run
 - [ ] Add basic billing protection such as budget alerts or usage monitoring before public exposure
 
 **Phase 9 done when:** The backend is deployed to Cloud Run, reachable from the real frontend, and verified with a successful end-to-end voice conversation.
@@ -236,7 +239,17 @@ These apply to every line written, every phase, no exceptions:
 
 > Update this line as you progress.
 
-**Currently working on: Phase 9 Cloud Run deployment — container artifacts are in place; next is platform setup, env/secrets, and first deploy**
+**Currently working on: Phase 9 Cloud Run deployment — auth-enabled Cloud Run rollout succeeded; billing alerts and CI/CD are next**
+
+## Next Recommended Work
+
+> Follow this order unless something breaks in production and changes the priority.
+
+1. Add Google Cloud Billing budget alerts / usage monitoring
+2. Add GitHub Actions CI/CD for Cloud Run image build and deploy
+3. Reduce query-string token exposure in platform logs
+4. Add max-audio-seconds cost guard per session
+5. Revisit post-MVP improvements only after the above are stable
 
 ---
 

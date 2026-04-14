@@ -400,3 +400,44 @@ This runbook is intentionally honest about the current state. The following are 
 What remains incomplete is not deployability, but deeper production hardening: CI/CD automation, max-audio cost guard implementation, distributed rate limits, and deployment-level log hygiene around query-string token transport.
 
 That means the service is deployable, but it is still in the "careful controlled rollout" stage rather than a fully hardened public-service stage.
+
+## GitHub Actions CI/CD
+
+The repository now includes a first-pass GitHub Actions workflow at [.github/workflows/deploy-cloud-run.yml](../.github/workflows/deploy-cloud-run.yml).
+
+What the workflow does:
+
+- runs on pushes to `main` and on manual `workflow_dispatch`
+- installs dependencies and runs `npm run typecheck`
+- authenticates to Google Cloud using Workload Identity Federation
+- ensures an Artifact Registry Docker repository exists
+- builds a Docker image and pushes it to Artifact Registry
+- deploys that image to the existing Cloud Run service
+
+The workflow assumes the currently verified production configuration:
+
+- project: `yubi-portfolio-voice-chat`
+- region: `australia-southeast1`
+- Artifact Registry repository: `yubi-voice-service`
+- Cloud Run service: `yubi-voice-service`
+- auth enabled via `AUTH_SIGNING_SECRET`
+- current turn-based production env var set
+
+Required GitHub repository secrets:
+
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`
+- `GCP_SERVICE_ACCOUNT`
+
+Recommended GCP IAM for the deployment service account:
+
+- `roles/run.admin`
+- `roles/artifactregistry.writer`
+- `roles/iam.serviceAccountUser`
+- `roles/secretmanager.secretAccessor`
+
+Recommended next validation after wiring those secrets:
+
+1. trigger the workflow manually with `workflow_dispatch`
+2. confirm the image is pushed to Artifact Registry
+3. confirm Cloud Run creates a new revision from the pushed image
+4. rerun `/health`, unauthenticated `wscat`, and the real frontend smoke test

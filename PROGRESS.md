@@ -239,19 +239,15 @@ These apply to every line written, every phase, no exceptions:
 
 > Update this line as you progress.
 
-**Currently working on: Next-up infrastructure hardening — billing protection is in place; CI/CD is next**
+**Currently working on: Next-up infrastructure hardening — manual GitHub Actions CI/CD is in place; query-string token exposure is next**
 
 ## Next Recommended Work
 
 > Follow this order unless something breaks in production and changes the priority.
 
-1. Add GitHub Actions CI/CD for manual Cloud Run image build and deploy
-2. Configure GCP Workload Identity Federation and GitHub repository secrets for the workflow
-3. Create the Artifact Registry Docker repository once outside the workflow
-4. Validate the first image-based GitHub Actions deploy to Cloud Run
-5. Reduce query-string token exposure in platform logs
-6. Add max-audio-seconds cost guard per session
-7. Revisit post-MVP improvements only after the above are stable
+1. Reduce query-string token exposure in platform logs
+2. Add max-audio-seconds cost guard per session
+3. Revisit post-MVP improvements only after the above are stable
 
 ---
 

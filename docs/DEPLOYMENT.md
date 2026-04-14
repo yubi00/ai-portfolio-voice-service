@@ -397,7 +397,7 @@ This runbook is intentionally honest about the current state. The following are 
 - automated health smoke tests
 - centralized logging setup
 
-What remains incomplete is not deployability, but deeper production hardening: CI/CD automation, max-audio cost guard implementation, distributed rate limits, and deployment-level log hygiene around query-string token transport.
+What remains incomplete is not deployability, but deeper production hardening: max-audio cost guard implementation, distributed rate limits, and deployment-level log hygiene around query-string token transport.
 
 That means the service is deployable, but it is still in the "careful controlled rollout" stage rather than a fully hardened public-service stage.
 
@@ -451,3 +451,11 @@ Recommended next validation after wiring those secrets:
 2. confirm the image is pushed to Artifact Registry
 3. confirm Cloud Run creates a new revision from the pushed image
 4. rerun `/health`, unauthenticated `wscat`, and the real frontend smoke test
+
+Current status:
+
+- Workload Identity Federation is configured and working
+- GitHub repository secrets are configured
+- the Artifact Registry Docker repository exists
+- a manual `workflow_dispatch` run completed successfully
+- the manual image-based Cloud Run deployment path is now validated

@@ -407,10 +407,9 @@ The repository now includes a first-pass GitHub Actions workflow at [.github/wor
 
 What the workflow does:
 
-- runs on pushes to `main` and on manual `workflow_dispatch`
+- runs only on manual `workflow_dispatch`
 - installs dependencies and runs `npm run typecheck`
 - authenticates to Google Cloud using Workload Identity Federation
-- ensures an Artifact Registry Docker repository exists
 - builds a Docker image and pushes it to Artifact Registry
 - deploys that image to the existing Cloud Run service
 
@@ -422,6 +421,17 @@ The workflow assumes the currently verified production configuration:
 - Cloud Run service: `yubi-voice-service`
 - auth enabled via `AUTH_SIGNING_SECRET`
 - current turn-based production env var set
+
+One-time prerequisite outside the workflow:
+
+- create the Artifact Registry Docker repository manually before the first workflow run:
+
+```bash
+gcloud artifacts repositories create yubi-voice-service \
+  --repository-format=docker \
+  --location=australia-southeast1 \
+  --description="Docker images for yubi-portfolio-voice-service"
+```
 
 Required GitHub repository secrets:
 

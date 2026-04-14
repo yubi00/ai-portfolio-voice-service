@@ -1,9 +1,6 @@
 name: Deploy Cloud Run
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 env:
@@ -46,16 +43,6 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
-
-      - name: Ensure Artifact Registry repository exists
-        shell: bash
-        run: |
-          gcloud artifacts repositories describe "$GAR_REPOSITORY" \
-            --location="$GCP_REGION" >/dev/null 2>&1 || \
-          gcloud artifacts repositories create "$GAR_REPOSITORY" \
-            --repository-format=docker \
-            --location="$GCP_REGION" \
-            --description="Docker images for yubi-portfolio-voice-service"
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker "${{ env.GCP_REGION }}-docker.pkg.dev" --quiet

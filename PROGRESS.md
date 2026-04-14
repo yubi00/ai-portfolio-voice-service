@@ -216,7 +216,7 @@ These apply to every line written, every phase, no exceptions:
 - [x] Verify unauthenticated `/ws` access is rejected after auth is enabled
 - [x] Verify the real frontend still works end-to-end with auth enabled
 - [x] Document the exact deploy / rollback steps used for Cloud Run
-- [ ] Add basic billing protection such as budget alerts or usage monitoring before public exposure
+- [x] Add basic billing protection such as budget alerts or usage monitoring before public exposure
 
 **Phase 9 done when:** The backend is deployed to Cloud Run, reachable from the real frontend, and verified with a successful end-to-end voice conversation.
 
@@ -239,17 +239,16 @@ These apply to every line written, every phase, no exceptions:
 
 > Update this line as you progress.
 
-**Currently working on: Phase 9 Cloud Run deployment — auth-enabled Cloud Run rollout succeeded; billing alerts and CI/CD are next**
+**Currently working on: Next-up infrastructure hardening — billing protection is in place; CI/CD is next**
 
 ## Next Recommended Work
 
 > Follow this order unless something breaks in production and changes the priority.
 
-1. Add Google Cloud Billing budget alerts / usage monitoring
-2. Add GitHub Actions CI/CD for Cloud Run image build and deploy
-3. Reduce query-string token exposure in platform logs
-4. Add max-audio-seconds cost guard per session
-5. Revisit post-MVP improvements only after the above are stable
+1. Add GitHub Actions CI/CD for Cloud Run image build and deploy
+2. Reduce query-string token exposure in platform logs
+3. Add max-audio-seconds cost guard per session
+4. Revisit post-MVP improvements only after the above are stable
 
 ---
 

@@ -371,10 +371,15 @@ Important auth behavior:
 Controls that should be added before wider public exposure:
 
 - stronger logging and alerting integration
-- budget alerts and usage monitoring in Google Cloud Billing
 - deployment-level secret rotation and audit trail
 - refresh-token migration to `httpOnly` cookies in the main FastAPI backend
 - optional distributed rate limiting if the service is scaled horizontally
+
+Current billing protection already in place:
+
+- a `5 AUD` monthly Cloud Billing budget scoped to project `yubi-portfolio-voice-chat`
+- alert thresholds at `50%`, `90%`, and `100%`
+- this budget is alerting-only; it does not automatically shut down Cloud Run or OpenAI usage
 
 Recommended production posture today:
 
@@ -392,6 +397,6 @@ This runbook is intentionally honest about the current state. The following are 
 - automated health smoke tests
 - centralized logging setup
 
-What remains incomplete is not deployability, but deeper production hardening: budget alerts, CI/CD automation, max-audio cost guard implementation, distributed rate limits, and deployment-level log hygiene around query-string token transport.
+What remains incomplete is not deployability, but deeper production hardening: CI/CD automation, max-audio cost guard implementation, distributed rate limits, and deployment-level log hygiene around query-string token transport.
 
 That means the service is deployable, but it is still in the "careful controlled rollout" stage rather than a fully hardened public-service stage.

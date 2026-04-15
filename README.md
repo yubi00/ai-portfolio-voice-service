@@ -151,7 +151,7 @@ The most important structural choice is that the browser always talks to one bac
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - npm
 - OpenAI API key with access to the models you intend to use
 

@@ -71,5 +71,5 @@ jobs:
             --cpu=1 \
             --memory=512Mi \
             --timeout=900 \
-            --set-secrets=OPENAI_API_KEY=openai-api-key:latest,AUTH_SIGNING_SECRET=auth-signing-secret:latest \
-            --set-env-vars=NODE_ENV=production,REQUIRE_AUTH=true,VOICE_AUTH_QUERY_PARAM=access_token,ALLOWED_ORIGINS=https://www.yubikhadka.com,VOICE_MODE=turn-based,OPENAI_VOICE=cedar,MAX_SESSION_DURATION_MS=900000,MAX_AUDIO_SECONDS_PER_SESSION=480,MAX_CONCURRENT_SESSIONS=3,INACTIVITY_TIMEOUT_MS=30000,TURN_BASED_TRANSCRIPTION_MODEL=whisper-1,TURN_BASED_CHAT_MODEL=gpt-4o-mini,TURN_BASED_TTS_MODEL=gpt-4o-mini-tts,TURN_BASED_SILENCE_THRESHOLD=0.015,TURN_BASED_SILENCE_DURATION_MS=700,TURN_BASED_MIN_SPEECH_DURATION_MS=250,TURN_BASED_PCM_CHUNK_BYTES=4800,TURN_BASED_MAX_HISTORY_MESSAGES=8
+            --env-vars-file=deploy/cloudrun.env.yaml \
+            --set-secrets=OPENAI_API_KEY=openai-api-key:latest,AUTH_SIGNING_SECRET=auth-signing-secret:latest

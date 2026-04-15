@@ -87,7 +87,7 @@ Before shipping a release:
 
 ## Deployment Procedure
 
-This repository now includes a basic `Dockerfile` and `.dockerignore` suitable for Google Cloud Run source deployments. It does not yet include IaC or CI/CD release automation.
+This repository now includes a basic `Dockerfile`, `.dockerignore`, and a checked-in non-secret Cloud Run env file at [deploy/cloudrun.env.yaml](../deploy/cloudrun.env.yaml). It does not yet include IaC or full release automation beyond the current GitHub Actions workflow.
 
 ### Verified Cloud Run flow
 
@@ -99,7 +99,7 @@ Verified platform configuration:
 - Region: `australia-southeast1`
 - Cloud Run service: `yubi-voice-service`
 - Public service URL: `https://yubi-voice-service-69604910031.australia-southeast1.run.app`
-- Frontend origin allowlist: `https://www.yubikhadka.com`
+- Frontend origin allowlist: `https://yubi.sh`
 - Voice mode: `turn-based`
 - Cloud Run min instances: `0`
 - Cloud Run max instances: `1`
@@ -108,6 +108,11 @@ Verified platform configuration:
 - Runtime memory: `512Mi`
 - Runtime CPU: `1`
 - Current auth posture: `REQUIRE_AUTH=true`
+
+Checked-in non-secret runtime config:
+
+- `deploy/cloudrun.env.yaml` is the source of truth for non-secret Cloud Run runtime variables
+- Google Secret Manager remains the source of truth for `OPENAI_API_KEY` and `AUTH_SIGNING_SECRET`
 
 Secrets used:
 
@@ -187,7 +192,7 @@ gcloud run deploy yubi-voice-service \
   --region australia-southeast1 \
   --allow-unauthenticated \
   --set-secrets OPENAI_API_KEY=openai-api-key:latest \
-  --set-env-vars NODE_ENV=production,REQUIRE_AUTH=false,ALLOWED_ORIGINS=https://www.yubikhadka.com,VOICE_MODE=turn-based,OPENAI_VOICE=cedar,MAX_SESSION_DURATION_MS=900000,MAX_CONCURRENT_SESSIONS=3,INACTIVITY_TIMEOUT_MS=30000,TURN_BASED_TRANSCRIPTION_MODEL=whisper-1,TURN_BASED_CHAT_MODEL=gpt-4o-mini,TURN_BASED_TTS_MODEL=gpt-4o-mini-tts,TURN_BASED_SILENCE_THRESHOLD=0.015,TURN_BASED_SILENCE_DURATION_MS=700,TURN_BASED_MIN_SPEECH_DURATION_MS=250,TURN_BASED_PCM_CHUNK_BYTES=4800,TURN_BASED_MAX_HISTORY_MESSAGES=8 \
+  --set-env-vars NODE_ENV=production,REQUIRE_AUTH=false,ALLOWED_ORIGINS=https://yubi.sh,VOICE_MODE=turn-based,OPENAI_VOICE=cedar,MAX_SESSION_DURATION_MS=900000,MAX_CONCURRENT_SESSIONS=3,INACTIVITY_TIMEOUT_MS=30000,TURN_BASED_TRANSCRIPTION_MODEL=whisper-1,TURN_BASED_CHAT_MODEL=gpt-4o-mini,TURN_BASED_TTS_MODEL=gpt-4o-mini-tts,TURN_BASED_SILENCE_THRESHOLD=0.015,TURN_BASED_SILENCE_DURATION_MS=700,TURN_BASED_MIN_SPEECH_DURATION_MS=250,TURN_BASED_PCM_CHUNK_BYTES=4800,TURN_BASED_MAX_HISTORY_MESSAGES=8 \
   --min-instances=0 \
   --max-instances=1 \
   --concurrency=3 \
@@ -204,7 +209,7 @@ gcloud run deploy yubi-voice-service \
   --region australia-southeast1 \
   --allow-unauthenticated \
   --set-secrets OPENAI_API_KEY=openai-api-key:latest,AUTH_SIGNING_SECRET=auth-signing-secret:latest \
-  --set-env-vars NODE_ENV=production,REQUIRE_AUTH=true,VOICE_AUTH_QUERY_PARAM=access_token,ALLOWED_ORIGINS=https://www.yubikhadka.com,VOICE_MODE=turn-based,OPENAI_VOICE=cedar,MAX_SESSION_DURATION_MS=900000,MAX_CONCURRENT_SESSIONS=3,INACTIVITY_TIMEOUT_MS=30000,TURN_BASED_TRANSCRIPTION_MODEL=whisper-1,TURN_BASED_CHAT_MODEL=gpt-4o-mini,TURN_BASED_TTS_MODEL=gpt-4o-mini-tts,TURN_BASED_SILENCE_THRESHOLD=0.015,TURN_BASED_SILENCE_DURATION_MS=700,TURN_BASED_MIN_SPEECH_DURATION_MS=250,TURN_BASED_PCM_CHUNK_BYTES=4800,TURN_BASED_MAX_HISTORY_MESSAGES=8 \
+  --set-env-vars NODE_ENV=production,REQUIRE_AUTH=true,VOICE_AUTH_QUERY_PARAM=access_token,ALLOWED_ORIGINS=https://yubi.sh,VOICE_MODE=turn-based,OPENAI_VOICE=cedar,MAX_SESSION_DURATION_MS=900000,MAX_CONCURRENT_SESSIONS=3,INACTIVITY_TIMEOUT_MS=30000,TURN_BASED_TRANSCRIPTION_MODEL=whisper-1,TURN_BASED_CHAT_MODEL=gpt-4o-mini,TURN_BASED_TTS_MODEL=gpt-4o-mini-tts,TURN_BASED_SILENCE_THRESHOLD=0.015,TURN_BASED_SILENCE_DURATION_MS=700,TURN_BASED_MIN_SPEECH_DURATION_MS=250,TURN_BASED_PCM_CHUNK_BYTES=4800,TURN_BASED_MAX_HISTORY_MESSAGES=8 \
   --min-instances=0 \
   --max-instances=1 \
   --concurrency=3 \
@@ -222,6 +227,7 @@ Notes on these commands:
 - `max-instances=1` plus `concurrency=3` keeps the rollout intentionally small
 - `MAX_CONCURRENT_SESSIONS=3` is the app-level session cap inside that one container instance
 - the second deploy injects `AUTH_SIGNING_SECRET` and turns on access-token verification for `/ws`
+- the current GitHub Actions workflow now uses `deploy/cloudrun.env.yaml` instead of an inline `--set-env-vars` string
 
 ### Current frontend wiring
 
@@ -295,10 +301,10 @@ Verified Cloud Run checks already performed:
 
 - `GET /health` returned `200` with `{ "status": "ok" }`
 - a plain `curl` to `/ws` returned `404 Cannot GET /ws`, which is expected because `/ws` is WebSocket-only and not an Express HTTP route
-- a real WebSocket client (`wscat`) connected successfully to `wss://yubi-voice-service-69604910031.australia-southeast1.run.app/ws` with `Origin: https://www.yubikhadka.com` before auth was enabled
+- a real WebSocket client (`wscat`) connected successfully to `wss://yubi-voice-service-69604910031.australia-southeast1.run.app/ws` with an allowed frontend origin before auth was enabled
 - the deployed service emitted `session.created` and `session.updated` events in `turn-based` mode
 - after `REQUIRE_AUTH=true`, an unauthenticated `wscat` connection was rejected with close code `1008` and reason `Unauthorized`
-- an end-to-end voice conversation from `https://www.yubikhadka.com` completed successfully against the deployed Cloud Run backend after frontend auth was enabled
+- an end-to-end voice conversation from `https://yubi.sh` completed successfully against the deployed Cloud Run backend after frontend auth was enabled
 
 ## Runtime Operations
 
@@ -434,7 +440,9 @@ What the workflow does:
 - installs dependencies and runs `npm run typecheck`
 - authenticates to Google Cloud using Workload Identity Federation
 - builds a Docker image and pushes it to Artifact Registry
-- deploys that image to the existing Cloud Run service
+- deploys that image to the existing Cloud Run service using:
+  - non-secret runtime config from [deploy/cloudrun.env.yaml](../deploy/cloudrun.env.yaml)
+  - secrets from Google Secret Manager
 
 The workflow assumes the currently verified production configuration:
 
@@ -443,7 +451,7 @@ The workflow assumes the currently verified production configuration:
 - Artifact Registry repository: `yubi-voice-service`
 - Cloud Run service: `yubi-voice-service`
 - auth enabled via `AUTH_SIGNING_SECRET`
-- current turn-based production env var set
+- current turn-based production env var set in `deploy/cloudrun.env.yaml`
 
 One-time prerequisite outside the workflow:
 
@@ -460,6 +468,15 @@ Required GitHub repository secrets:
 
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`
 - `GCP_SERVICE_ACCOUNT`
+
+Why the env file approach is preferred:
+
+- keeps non-secret runtime config out of a long inline `gcloud --set-env-vars` string
+- makes config changes easier to review in pull requests
+- keeps the workflow focused on build/deploy orchestration rather than acting as the config store
+- preserves the split:
+  - checked-in non-secret config
+  - Secret Manager for sensitive values
 
 Recommended GCP IAM for the deployment service account:
 
